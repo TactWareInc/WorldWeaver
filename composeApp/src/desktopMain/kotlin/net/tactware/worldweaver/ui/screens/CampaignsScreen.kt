@@ -22,16 +22,23 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,23 +62,24 @@ import org.koin.compose.koinInject
 private fun CampaignItem(
     campaign: Campaign,
     isActive: Boolean,
-    onSetActive: () -> Unit
+    onSetActive: () -> Unit,
+    onEdit: () -> Unit
 ) {
-    Card(
+    ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = MaterialTheme.spacing.small),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(12.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(MaterialTheme.spacing.medium)
         ) {
-            // Header with name and active button
+            // Header with name and buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -83,30 +91,38 @@ private fun CampaignItem(
                     color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Surface(
-                    modifier = Modifier.clickable(onClick = onSetActive),
-                    color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-                    shape = RoundedCornerShape(4.dp)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.padding(
-                            horizontal = MaterialTheme.spacing.medium,
-                            vertical = MaterialTheme.spacing.small
-                        ),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-                    ) {
-                        if (isActive) {
+                    // Edit button
+                    IconButton(onClick = onEdit) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Campaign",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    // Active/Set Active button
+                    if (isActive) {
+                        FilledTonalButton(
+                            onClick = {},
+                            enabled = false
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = "Active",
-                                tint = MaterialTheme.colorScheme.onPrimary
+                                modifier = Modifier.padding(end = MaterialTheme.spacing.small)
                             )
+                            Text("Active")
                         }
-                        Text(
-                            if (isActive) "Active" else "Set Active",
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
+                    } else {
+                        Button(
+                            onClick = onSetActive
+                        ) {
+                            Text("Set Active")
+                        }
                     }
                 }
             }
@@ -114,19 +130,40 @@ private fun CampaignItem(
             // Campaign details
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
 
-            Text(
-                "Setting: ${campaign.setting}",
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Setting",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        campaign.setting,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
 
-            Text(
-                campaign.description,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+                Column(modifier = Modifier.weight(2f)) {
+                    Text(
+                        "Description",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        campaign.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
 
             // Additional info
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+            Divider()
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
 
             Row(
@@ -135,19 +172,22 @@ private fun CampaignItem(
             ) {
                 Text(
                     "Characters: ${campaign.playerCharacters.size}",
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Text(
                     "Quests: ${campaign.activeQuests.size + campaign.completedQuests.size}",
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 // Format date to a readable string
                 val createdDate = campaign.createdAt.toLocalDateTime(TimeZone.currentSystemDefault())
                 Text(
                     "Created: ${createdDate.date}",
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -158,15 +198,63 @@ private fun CampaignItem(
 fun CampaignsScreen(viewModel: MainViewModel) {
     val campaignService = koinInject<CampaignService>()
 
-    // State for new campaign form
+    // State for campaign forms
     var showNewCampaignForm by remember { mutableStateOf(false) }
     var campaignName by remember { mutableStateOf("") }
     var campaignDescription by remember { mutableStateOf("") }
     var campaignSetting by remember { mutableStateOf("") }
     var campaignNotes by remember { mutableStateOf("") }
 
+    // State for editing campaigns
+    var editingCampaignId by remember { mutableStateOf<String?>(null) }
+    var showEditForm by remember { mutableStateOf(false) }
+
+    // State for selected campaign (for list-detail view)
+    var selectedCampaign by remember { mutableStateOf<Campaign?>(null) }
+
+    // Function to start editing a campaign
+    fun startEditingCampaign(campaign: Campaign) {
+        campaignName = campaign.name
+        campaignDescription = campaign.description
+        campaignSetting = campaign.setting
+        campaignNotes = campaign.notes
+        editingCampaignId = campaign.id
+        showEditForm = true
+        showNewCampaignForm = false
+    }
+
+    // Function to cancel editing
+    fun cancelEditing() {
+        editingCampaignId = null
+        showEditForm = false
+        campaignName = ""
+        campaignDescription = ""
+        campaignSetting = ""
+        campaignNotes = ""
+    }
+
+    // Function to save edited campaign
+    fun saveEditedCampaign() {
+        editingCampaignId?.let { id ->
+            viewModel.onInteraction(
+                MainScreenAction.UpdateCampaign(
+                    id = id,
+                    name = campaignName,
+                    description = campaignDescription,
+                    setting = campaignSetting,
+                    notes = campaignNotes
+                )
+            )
+            cancelEditing()
+        }
+    }
+
+    val scrollState = rememberScrollState()
     Column(
-        modifier = Modifier.fillMaxSize().padding(MaterialTheme.spacing.medium),
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(MaterialTheme.spacing.medium),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
     ) {
         // Header section
@@ -201,157 +289,176 @@ fun CampaignsScreen(viewModel: MainViewModel) {
             )
 
             // New Campaign Button
-            Surface(
-                modifier = Modifier.clickable {
-                    showNewCampaignForm = !showNewCampaignForm
-                },
-                color = MaterialTheme.colorScheme.primary,
-                shape = RoundedCornerShape(4.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(
-                        horizontal = MaterialTheme.spacing.medium,
-                        vertical = MaterialTheme.spacing.small
-                    ),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+            if (showNewCampaignForm) {
+                OutlinedButton(
+                    onClick = { showNewCampaignForm = false }
                 ) {
                     Icon(
-                        imageVector = if (showNewCampaignForm) Icons.Default.Close else Icons.Default.Add,
-                        contentDescription = if (showNewCampaignForm) "Cancel" else "Create New Campaign",
-                        tint = MaterialTheme.colorScheme.onPrimary
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Cancel",
+                        modifier = Modifier.padding(end = MaterialTheme.spacing.small)
                     )
-                    Text(
-                        if (showNewCampaignForm) "Cancel" else "Create New Campaign",
-                        color = MaterialTheme.colorScheme.onPrimary
+                    Text("Cancel")
+                }
+            } else {
+                Button(
+                    onClick = { 
+                        showNewCampaignForm = true
+                        showEditForm = false
+                        editingCampaignId = null
+                        campaignName = ""
+                        campaignDescription = ""
+                        campaignSetting = ""
+                        campaignNotes = ""
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Create New Campaign",
+                        modifier = Modifier.padding(end = MaterialTheme.spacing.small)
                     )
+                    Text("Create New Campaign")
                 }
             }
         }
 
-        // New Campaign Form
-        AnimatedVisibility(visible = showNewCampaignForm) {
-            Card(
+        // Campaign Forms
+        AnimatedVisibility(visible = showNewCampaignForm || showEditForm) {
+            ElevatedCard(
                 modifier = Modifier.fillMaxWidth().padding(vertical = MaterialTheme.spacing.small),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 ),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.medium),
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
                 ) {
                     Text(
-                        "Create New Campaign",
+                        if (showEditForm) "Edit Campaign" else "Create New Campaign",
                         style = MaterialTheme.typography.titleMedium
                     )
 
-                    // Two-column layout for form fields
-                    Row(
+                    // Form fields in a more responsive layout
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
                     ) {
-                        // Left column - Basic info
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-                        ) {
-                            // Name Field
-                            OutlinedTextField(
-                                value = campaignName,
-                                onValueChange = { campaignName = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Name") },
-                                placeholder = { Text("Enter campaign name") },
-                                singleLine = true
-                            )
+                        // Name Field
+                        OutlinedTextField(
+                            value = campaignName,
+                            onValueChange = { campaignName = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Name") },
+                            placeholder = { Text("Enter campaign name") },
+                            singleLine = true,
+                            supportingText = { 
+                                if (campaignName.isBlank()) {
+                                    Text("Name is required")
+                                }
+                            }
+                        )
 
-                            // Setting Field
-                            OutlinedTextField(
-                                value = campaignSetting,
-                                onValueChange = { campaignSetting = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Setting") },
-                                placeholder = { Text("Enter campaign setting") },
-                                singleLine = true
-                            )
-                        }
+                        // Setting Field
+                        OutlinedTextField(
+                            value = campaignSetting,
+                            onValueChange = { campaignSetting = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Setting") },
+                            placeholder = { Text("Enter campaign setting") },
+                            singleLine = true,
+                            supportingText = { 
+                                if (campaignSetting.isBlank()) {
+                                    Text("Setting is required")
+                                }
+                            }
+                        )
 
-                        // Right column - Detailed info
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-                        ) {
-                            // Description Field
-                            OutlinedTextField(
-                                value = campaignDescription,
-                                onValueChange = { campaignDescription = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Description") },
-                                placeholder = { Text("Enter campaign description") },
-                                minLines = 2,
-                                maxLines = 3
-                            )
+                        // Description Field
+                        OutlinedTextField(
+                            value = campaignDescription,
+                            onValueChange = { campaignDescription = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Description") },
+                            placeholder = { Text("Enter campaign description") },
+                            minLines = 2,
+                            maxLines = 3,
+                            supportingText = { 
+                                if (campaignDescription.isBlank()) {
+                                    Text("Description is required")
+                                }
+                            }
+                        )
 
-                            // Notes Field
-                            OutlinedTextField(
-                                value = campaignNotes,
-                                onValueChange = { campaignNotes = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Notes") },
-                                placeholder = { Text("Enter campaign notes") },
-                                minLines = 2,
-                                maxLines = 3
-                            )
-                        }
+                        // Notes Field
+                        OutlinedTextField(
+                            value = campaignNotes,
+                            onValueChange = { campaignNotes = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Notes") },
+                            placeholder = { Text("Enter campaign notes (optional)") },
+                            minLines = 2,
+                            maxLines = 3
+                        )
                     }
 
-                    // Submit Button
+                    // Action Buttons
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
-                            modifier = Modifier.clickable {
-                                if (campaignName.isNotBlank() && campaignDescription.isNotBlank() && campaignSetting.isNotBlank()) {
-                                    viewModel.onInteraction(
-                                        MainScreenAction.CreateCampaign(
-                                            name = campaignName,
-                                            description = campaignDescription,
-                                            setting = campaignSetting,
-                                            notes = campaignNotes
-                                        )
-                                    )
-                                    // Reset form
+                        // Cancel Button
+                        OutlinedButton(
+                            onClick = {
+                                if (showEditForm) {
+                                    cancelEditing()
+                                } else {
+                                    showNewCampaignForm = false
                                     campaignName = ""
                                     campaignDescription = ""
                                     campaignSetting = ""
                                     campaignNotes = ""
-                                    showNewCampaignForm = false
                                 }
                             },
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = RoundedCornerShape(4.dp)
+                            modifier = Modifier.padding(end = MaterialTheme.spacing.small)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(
-                                    horizontal = MaterialTheme.spacing.medium,
-                                    vertical = MaterialTheme.spacing.small
-                                ),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Create Campaign",
-                                    tint = MaterialTheme.colorScheme.onPrimary
-                                )
-                                Text(
-                                    "Create Campaign",
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
-                            }
+                            Text("Cancel")
+                        }
+
+                        // Submit Button
+                        Button(
+                            onClick = {
+                                if (campaignName.isNotBlank() && campaignDescription.isNotBlank() && campaignSetting.isNotBlank()) {
+                                    if (showEditForm) {
+                                        saveEditedCampaign()
+                                    } else {
+                                        viewModel.onInteraction(
+                                            MainScreenAction.CreateCampaign(
+                                                name = campaignName,
+                                                description = campaignDescription,
+                                                setting = campaignSetting,
+                                                notes = campaignNotes
+                                            )
+                                        )
+                                        // Reset form
+                                        campaignName = ""
+                                        campaignDescription = ""
+                                        campaignSetting = ""
+                                        campaignNotes = ""
+                                        showNewCampaignForm = false
+                                    }
+                                }
+                            },
+                            enabled = campaignName.isNotBlank() && campaignDescription.isNotBlank() && campaignSetting.isNotBlank()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = if (showEditForm) "Save Changes" else "Create Campaign",
+                                modifier = Modifier.padding(end = MaterialTheme.spacing.small)
+                            )
+                            Text(if (showEditForm) "Save Changes" else "Create Campaign")
                         }
                     }
                 }
@@ -362,7 +469,7 @@ fun CampaignsScreen(viewModel: MainViewModel) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f) // Take remaining space
+                .height(400.dp) // Fixed height instead of weight
         ) {
             // Use LazyColumn for better performance with large lists
             LazyColumn(
@@ -376,6 +483,9 @@ fun CampaignsScreen(viewModel: MainViewModel) {
                         isActive = isActive,
                         onSetActive = {
                             viewModel.onInteraction(MainScreenAction.SetActiveCampaign(campaign.id))
+                        },
+                        onEdit = {
+                            startEditingCampaign(campaign)
                         }
                     )
                 }

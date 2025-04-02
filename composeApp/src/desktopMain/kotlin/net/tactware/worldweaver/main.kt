@@ -328,17 +328,17 @@ fun main() = application {
                                     0 -> { // Dashboard
                                         DashboardScreen(viewModel)
                                     }
-                                    1 -> { // Characters
-                                        CharactersScreen()
+                                    1 -> { // Campaigns
+                                        CampaignsScreen(viewModel)
                                     }
-                                    2 -> { // Locations
+                                    2 -> { // Characters
+                                        CharactersScreen(viewModel)
+                                    }
+                                    3 -> { // Locations
                                         LocationsScreen()
                                     }
-                                    3 -> { // Lore
+                                    4 -> { // Lore
                                         LoreScreen()
-                                    }
-                                    4 -> { // Campaigns
-                                        CampaignsScreen(viewModel)
                                     }
                                     5 -> { // Encounters
                                         EncountersScreen()
