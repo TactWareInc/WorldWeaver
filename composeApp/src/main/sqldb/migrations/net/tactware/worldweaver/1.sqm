@@ -1,0 +1,23 @@
+-- Initial schema creation
+CREATE TABLE IF NOT EXISTS Campaign (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    setting TEXT NOT NULL,
+    playerCharacters TEXT NOT NULL, -- Stored as JSON array
+    activeQuests TEXT NOT NULL, -- Stored as JSON array
+    completedQuests TEXT NOT NULL, -- Stored as JSON array
+    notes TEXT NOT NULL,
+    createdAt TEXT NOT NULL, -- ISO-8601 format
+    updatedAt TEXT NOT NULL -- ISO-8601 format
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS CampaignFts USING fts4(
+    name TEXT,
+    description TEXT,
+    setting TEXT,
+    notes TEXT,
+    content='Campaign',
+    tokenize = 'unicode61'
+);
+

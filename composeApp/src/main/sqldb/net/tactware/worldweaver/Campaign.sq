@@ -1,0 +1,95 @@
+
+
+-- Triggers to keep the FTS table in sync with the main table
+CREATE TRIGGER campaign_ai AFTER INSERT ON Campaign BEGIN
+    INSERT INTO CampaignFts(rowid, name, description, setting, notes)
+    VALUES (new.id, new.name, new.description, new.setting, new.notes);
+END;
+
+CREATE TRIGGER campaign_ad AFTER DELETE ON Campaign BEGIN
+    INSERT INTO CampaignFts(CampaignFts, rowid, name, description, setting, notes)
+    VALUES ('delete', old.id, old.name, old.description, old.setting, old.notes);
+END;
+
+CREATE TRIGGER campaign_au AFTER UPDATE ON Campaign BEGIN
+    INSERT INTO CampaignFts(CampaignFts, rowid, name, description, setting, notes)
+    VALUES ('delete', old.id, old.name, old.description, old.setting, old.notes);
+    INSERT INTO CampaignFts(rowid, name, description, setting, notes)
+    VALUES (new.id, new.name, new.description, new.setting, new.notes);
+END;
+
+-- Queries
+getAllCampaigns:
+SELECT * FROM Campaign ORDER BY updatedAt DESC;
+
+getCampaignById:
+SELECT * FROM Campaign WHERE id = ?;
+
+-- FTS-based search
+searchCampaigns:
+SELECT Campaign.*
+FROM CampaignFts
+JOIN Campaign ON Campaign.id = CampaignFts.rowid
+WHERE CampaignFts MATCH ?
+ORDER BY updatedAt DESC;
+
+-- Legacy LIKE-based search (fallback)
+searchCampaignsLike:
+WITH search_query AS (
+    SELECT '%' || ? || '%' AS query
+)
+SELECT Campaign.*
+FROM CampaignFts
+JOIN Campaign ON Campaign.id = CampaignFts.rowid
+WHERE CampaignFts.name LIKE (SELECT query FROM search_query)
+   OR CampaignFts.description LIKE (SELECT query FROM search_query)
+   OR CampaignFts.setting LIKE (SELECT query FROM search_query)
+   OR CampaignFts.notes LIKE (SELECT query FROM search_query);
+
+-- Specialized FTS searches
+searchCampaignsByName:
+SELECT Campaign.*
+FROM CampaignFts
+JOIN Campaign ON Campaign.id = CampaignFts.rowid
+WHERE CampaignFts.name MATCH ?
+ORDER BY updatedAt DESC;
+
+searchCampaignsByDescription:
+SELECT Campaign.*
+FROM CampaignFts
+JOIN Campaign ON Campaign.id = CampaignFts.rowid
+WHERE CampaignFts.description MATCH ?
+ORDER BY updatedAt DESC;
+
+searchCampaignsBySetting:
+SELECT Campaign.*
+FROM CampaignFts
+JOIN Campaign ON Campaign.id = CampaignFts.rowid
+WHERE CampaignFts.setting MATCH ?
+ORDER BY updatedAt DESC;
+
+searchCampaignsByNotes:
+SELECT Campaign.*
+FROM CampaignFts
+JOIN Campaign ON Campaign.id = CampaignFts.rowid
+WHERE CampaignFts.notes MATCH ?
+ORDER BY updatedAt DESC;
+
+insertCampaign:
+INSERT INTO Campaign(id, name, description, setting, playerCharacters, activeQuests, completedQuests, notes, createdAt, updatedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateCampaign:
+UPDATE Campaign
+SET name = ?,
+    description = ?,
+    setting = ?,
+    playerCharacters = ?,
+    activeQuests = ?,
+    completedQuests = ?,
+    notes = ?,
+    updatedAt = ?
+WHERE id = ?;
+
+deleteCampaign:
+DELETE FROM Campaign WHERE id = ?;
