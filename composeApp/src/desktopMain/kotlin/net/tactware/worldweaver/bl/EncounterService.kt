@@ -4,18 +4,20 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import org.koin.core.annotation.Single
 
 /**
  * Singleton service for handling combat encounters across the application.
  * Manages combat encounters, initiative tracking, and combat statistics.
  */
-object EncounterService {
+@Single
+class EncounterService {
 
     /**
      * Data class representing a combat encounter
      */
     data class Encounter(
-        val id: String = generateId(),
+        val id: String = Companion.generateId(),
         val name: String,
         val description: String,
         val location: String, // Location name or ID
@@ -32,7 +34,7 @@ object EncounterService {
      * Data class representing a participant in an encounter
      */
     data class EncounterParticipant(
-        val id: String = generateId(),
+        val id: String = Companion.generateId(),
         val name: String,
         val type: ParticipantType,
         val initiative: Int = 0,
@@ -190,7 +192,7 @@ object EncounterService {
         notes: String = "",
         isActive: Boolean = false
     ): String {
-        val id = generateId()
+        val id = Companion.generateId()
         _encounters.add(
             Encounter(
                 id = id,
@@ -263,11 +265,11 @@ object EncounterService {
         if (encounterIndex != -1) {
             val encounter = _encounters[encounterIndex]
             val participantIndex = encounter.participants.indexOfFirst { it.id == participantId }
-            
+
             if (participantIndex != -1) {
                 val participant = encounter.participants[participantIndex]
                 val updatedParticipants = encounter.participants.toMutableList()
-                
+
                 updatedParticipants[participantIndex] = participant.copy(
                     name = name ?: participant.name,
                     initiative = initiative ?: participant.initiative,
@@ -277,7 +279,7 @@ object EncounterService {
                     conditions = conditions ?: participant.conditions,
                     notes = notes ?: participant.notes
                 )
-                
+
                 _encounters[encounterIndex] = encounter.copy(
                     participants = updatedParticipants,
                     updatedAt = Clock.System.now()
@@ -320,10 +322,12 @@ object EncounterService {
         }
     }
 
-    /**
-     * Generates a unique ID
-     */
-    private fun generateId(): String {
-        return System.currentTimeMillis().toString()
+    companion object {
+        /**
+         * Generates a unique ID
+         */
+        internal fun generateId(): String {
+            return System.currentTimeMillis().toString()
+        }
     }
 }

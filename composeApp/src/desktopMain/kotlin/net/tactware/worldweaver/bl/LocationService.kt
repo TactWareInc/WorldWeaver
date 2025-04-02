@@ -4,12 +4,14 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import org.koin.core.annotation.Single
 
 /**
  * Singleton service for handling location information across the application.
  * Manages cities, dungeons, wilderness areas, and other locations in the game world.
  */
-object LocationService {
+@Single
+class LocationService {
 
     /**
      * Enum representing location types
@@ -29,7 +31,7 @@ object LocationService {
      * Data class representing a location
      */
     data class Location(
-        val id: String = generateId(),
+        val id: String = Companion.generateId(),
         val name: String,
         val type: LocationType,
         val description: String,
@@ -113,7 +115,7 @@ object LocationService {
         mapCoordinates: Pair<Float, Float>? = null,
         notes: String = ""
     ): String {
-        val id = generateId()
+        val id = Companion.generateId()
         _locations.add(
             Location(
                 id = id,
@@ -207,10 +209,12 @@ object LocationService {
         }
     }
 
-    /**
-     * Generates a unique ID for a location
-     */
-    private fun generateId(): String {
-        return System.currentTimeMillis().toString()
+    companion object {
+        /**
+         * Generates a unique ID for a location
+         */
+        internal fun generateId(): String {
+            return System.currentTimeMillis().toString()
+        }
     }
 }

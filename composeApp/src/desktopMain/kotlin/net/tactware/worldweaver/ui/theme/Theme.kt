@@ -1,12 +1,9 @@
-package net.tactware.nimbus.appwide.ui.theme
-
+package net.tactware.worldweaver.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.darkColorScheme
-
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 
@@ -250,36 +247,21 @@ val unspecified_scheme = ColorFamily(
     Color.Unspecified, Color.Unspecified, Color.Unspecified, Color.Unspecified
 )
 
-// Global variable to store the current theme mode
-internal var currentIsDarkTheme = false
-
-/**
- * Returns whether the app is currently in dark theme mode.
- * This can be called from non-composable contexts.
- */
-fun isAppInDarkTheme(): Boolean {
-    return currentIsDarkTheme
-}
-
 @Composable
 fun AppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit
+    // Dynamic color is available on Android 12+
+    content: @Composable() () -> Unit
 ) {
-    // Store the current theme mode for access from non-composable contexts
-    currentIsDarkTheme = darkTheme
+  val colorScheme = when {
+      
+      darkTheme -> darkScheme
+      else -> lightScheme
+  }
 
-    val colorScheme = when {
-        darkTheme -> darkScheme
-        else -> lightScheme
-    }
-
-    CompositionLocalProvider(
-        LocalSpacing provides Spacing(),
-    ) {
-        MaterialTheme(
-            colorScheme = colorScheme,
-            content = content
-        )
-    }
+  MaterialTheme(
+    colorScheme = colorScheme,
+    content = content
+  )
 }
+

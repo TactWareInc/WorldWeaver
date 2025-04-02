@@ -4,18 +4,20 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import org.koin.core.annotation.Single
 
 /**
  * Singleton service for handling notifications across the application.
  * Currently uses in-memory storage for notifications.
  */
-object NotificationService {
+@Single
+class NotificationService {
 
     /**
      * Data class representing a notification
      */
     data class Notification(
-        val id: String = generateId(),
+        val id: String = Companion.generateId(),
         val title: String,
         val message: String,
         val timestamp: Instant = Clock.System.now(),
@@ -81,10 +83,12 @@ object NotificationService {
         return _notifications.count { !it.isRead }
     }
 
-    /**
-     * Generates a unique ID for a notification
-     */
-    private fun generateId(): String {
-        return System.currentTimeMillis().toString()
+    companion object {
+        /**
+         * Generates a unique ID for a notification
+         */
+        internal fun generateId(): String {
+            return System.currentTimeMillis().toString()
+        }
     }
 }

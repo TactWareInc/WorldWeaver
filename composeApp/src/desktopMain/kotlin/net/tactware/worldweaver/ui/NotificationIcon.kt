@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import net.tactware.worldweaver.bl.NotificationService
+import org.koin.compose.koinInject
 
 /**
  * A composable that displays a notification icon with a badge showing the number of unread notifications.
@@ -28,7 +29,8 @@ import net.tactware.worldweaver.bl.NotificationService
  */
 @Composable
 fun NotificationIcon() {
-    val unreadCount = NotificationService.getUnreadCount()
+    val notificationService = koinInject<NotificationService>()
+    val unreadCount = notificationService.getUnreadCount()
     var showDropdown by remember { mutableStateOf(false) }
 
     BadgedBox(badge = {
@@ -51,7 +53,7 @@ fun NotificationIcon() {
             expanded = showDropdown,
             onDismissRequest = { showDropdown = false }
         ) {
-            if (NotificationService.notifications.isEmpty()) {
+            if (notificationService.notifications.isEmpty()) {
                 DropdownMenuItem(
                     text = { Text("No notifications") },
                     onClick = { showDropdown = false }
@@ -65,7 +67,7 @@ fun NotificationIcon() {
                         Text(
                             "Mark all as read",
                             modifier = Modifier.clickable {
-                                NotificationService.markAllAsRead()
+                                notificationService.markAllAsRead()
                             },
                             color = MaterialTheme.colorScheme.primary,
                             style = MaterialTheme.typography.labelMedium
@@ -74,7 +76,7 @@ fun NotificationIcon() {
                 )
 
                 // List of notifications
-                NotificationService.notifications.forEach { notification ->
+                notificationService.notifications.forEach { notification ->
                     DropdownMenuItem(
                         text = {
                             Text(
@@ -85,7 +87,7 @@ fun NotificationIcon() {
                             )
                         },
                         onClick = {
-                            NotificationService.markAsRead(notification.id)
+                            notificationService.markAsRead(notification.id)
                         }
                     )
                 }
@@ -94,7 +96,7 @@ fun NotificationIcon() {
                 DropdownMenuItem(
                     text = { Text("Clear all") },
                     onClick = {
-                        NotificationService.clearAllNotifications()
+                        notificationService.clearAllNotifications()
                         showDropdown = false
                     }
                 )

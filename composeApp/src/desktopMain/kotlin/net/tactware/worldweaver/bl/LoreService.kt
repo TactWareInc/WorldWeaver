@@ -4,18 +4,20 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import org.koin.core.annotation.Single
 
 /**
  * Singleton service for handling lore entries across the application.
  * Manages world lore, history, myths, and other narrative elements.
  */
-object LoreService {
+@Single
+class LoreService {
 
     /**
      * Data class representing a lore entry
      */
     data class LoreEntry(
-        val id: String = generateId(),
+        val id: String = Companion.generateId(),
         val title: String,
         val content: String,
         val category: String, // e.g., "History", "Myth", "Religion", etc.
@@ -39,14 +41,14 @@ object LoreService {
             "Mythology",
             listOf("creation", "gods", "origin")
         )
-        
+
         addLoreEntry(
             "The Great War",
             "Five hundred years ago, the kingdoms of men united against the rising darkness from the north. Led by the legendary hero Aldric the Brave, they fought a decade-long war against the Lich King Malachar and his undead armies.",
             "History",
             listOf("war", "undead", "heroes")
         )
-        
+
         addLoreEntry(
             "The Pantheon",
             "The world is watched over by twelve major deities, each representing different aspects of existence. The most widely worshipped are Solara (goddess of light), Noctis (god of darkness), Terran (god of earth), and Aquaria (goddess of water).",
@@ -120,10 +122,12 @@ object LoreService {
         }
     }
 
-    /**
-     * Generates a unique ID for a lore entry
-     */
-    private fun generateId(): String {
-        return System.currentTimeMillis().toString()
+    companion object {
+        /**
+         * Generates a unique ID for a lore entry
+         */
+        internal fun generateId(): String {
+            return System.currentTimeMillis().toString()
+        }
     }
 }
