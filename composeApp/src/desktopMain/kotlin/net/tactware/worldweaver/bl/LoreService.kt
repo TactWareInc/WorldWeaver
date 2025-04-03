@@ -122,6 +122,22 @@ class LoreService {
         }
     }
 
+    /**
+     * Gets a lore entry by ID
+     */
+    fun getLoreEntryById(id: String): LoreEntry? {
+        return _loreEntries.find { it.id == id }
+    }
+
+    /**
+     * Gets related lore entries for a given entry
+     */
+    fun getRelatedLoreEntries(entry: LoreEntry): List<LoreEntry> {
+        return entry.relatedEntries.mapNotNull { relatedId ->
+            getLoreEntryById(relatedId)
+        }
+    }
+
     companion object {
         /**
          * Generates a unique ID for a lore entry

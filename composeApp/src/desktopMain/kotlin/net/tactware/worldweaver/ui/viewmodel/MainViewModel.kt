@@ -92,6 +92,8 @@ class MainViewModel(
                     armorClass = action.armorClass,
                     background = action.background,
                     alignmentEnum = action.alignment,
+                    lineage = action.lineage,
+                    relationships = action.relationships,
                     description = action.description,
                     notes = action.notes
                 )
@@ -112,6 +114,8 @@ class MainViewModel(
                     armorClass = action.armorClass,
                     background = action.background,
                     alignmentEnum = action.alignment,
+                    lineage = action.lineage,
+                    relationships = action.relationships,
                     description = action.description,
                     notes = action.notes
                 )
@@ -228,6 +232,8 @@ sealed class MainScreenAction {
         val armorClass: Int = 10,
         val background: String = "",
         val alignment: CharacterService.Alignment = CharacterService.Alignment.TRUE_NEUTRAL,
+        val lineage: String = "",
+        val relationships: List<CharacterService.CharacterRelationship> = emptyList(),
         val description: String = "",
         val notes: String = ""
     ) : MainScreenAction()
@@ -250,6 +256,8 @@ sealed class MainScreenAction {
         val armorClass: Int? = null,
         val background: String? = null,
         val alignment: CharacterService.Alignment? = null,
+        val lineage: String? = null,
+        val relationships: List<CharacterService.CharacterRelationship>? = null,
         val description: String? = null,
         val notes: String? = null
     ) : MainScreenAction()

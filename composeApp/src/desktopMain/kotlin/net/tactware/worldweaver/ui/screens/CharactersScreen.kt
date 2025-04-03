@@ -211,7 +211,8 @@ private fun CharacterItem(
 @Composable
 private fun CharacterDetailView(
     character: CharacterService.Character?,
-    onEdit: (CharacterService.Character) -> Unit
+    onEdit: (CharacterService.Character) -> Unit,
+    characterService: CharacterService
 ) {
     if (character == null) {
         // No character selected
@@ -351,6 +352,71 @@ private fun CharacterDetailView(
 
             Divider()
 
+            // Lineage and Relationships
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "Lineage & Relationships",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // Display legacy lineage text if available
+                if (character.lineage.isNotEmpty()) {
+                    Text(
+                        character.lineage,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+                }
+
+                // Display relationships
+                if (character.relationships.isNotEmpty()) {
+                    Column {
+                        character.relationships.forEach { relationship ->
+                            val relatedCharacter = characterService.characters.find { char -> char.id == relationship.relatedCharacterId }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Relationship type
+                                Text(
+                                    CharacterService.RelationshipType.toString(relationship.relationshipType),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    modifier = Modifier.width(100.dp)
+                                )
+
+                                // Related character name
+                                Text(
+                                    relatedCharacter?.name ?: "Unknown Character",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+
+                                // Description if available
+                                if (relationship.description.isNotEmpty()) {
+                                    Text(
+                                        " - ${relationship.description}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else if (character.lineage.isEmpty()) {
+                    Text(
+                        "No lineage or relationship information available",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
             // Description
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
@@ -396,9 +462,17 @@ fun CharactersScreen(viewModel: MainViewModel) {
     var characterLevel by remember { mutableStateOf("1") }
     var characterHitPoints by remember { mutableStateOf("10") }
     var characterArmorClass by remember { mutableStateOf("10") }
+    var characterLineage by remember { mutableStateOf("") }
     var characterDescription by remember { mutableStateOf("") }
     var characterNotes by remember { mutableStateOf("") }
     var selectedCharacterType by remember { mutableStateOf(CharacterService.CharacterType.PLAYER_CHARACTER) }
+
+    // State for character relationships
+    var characterRelationships by remember { mutableStateOf<List<CharacterService.CharacterRelationship>>(emptyList()) }
+    var showAddRelationshipDialog by remember { mutableStateOf(false) }
+    var selectedRelatedCharacterId by remember { mutableStateOf<String?>(null) }
+    var selectedRelationshipType by remember { mutableStateOf(CharacterService.RelationshipType.OTHER) }
+    var relationshipDescription by remember { mutableStateOf("") }
 
     // State for filtering characters
     var filterType by remember { mutableStateOf<CharacterService.CharacterType?>(null) }
@@ -419,9 +493,11 @@ fun CharactersScreen(viewModel: MainViewModel) {
         characterLevel = character.level.toString()
         characterHitPoints = character.hitPoints.toString()
         characterArmorClass = character.armorClass.toString()
+        characterLineage = character.lineage
         characterDescription = character.description
         characterNotes = character.notes
         selectedCharacterType = character.type
+        characterRelationships = character.relationships
         editingCharacterId = character.id
         showEditForm = true
         showNewCharacterForm = false
@@ -438,9 +514,15 @@ fun CharactersScreen(viewModel: MainViewModel) {
         characterLevel = "1"
         characterHitPoints = "10"
         characterArmorClass = "10"
+        characterLineage = ""
         characterDescription = ""
         characterNotes = ""
         selectedCharacterType = CharacterService.CharacterType.PLAYER_CHARACTER
+        characterRelationships = emptyList()
+        showAddRelationshipDialog = false
+        selectedRelatedCharacterId = null
+        selectedRelationshipType = CharacterService.RelationshipType.OTHER
+        relationshipDescription = ""
     }
 
     // Function to save edited character
@@ -458,6 +540,8 @@ fun CharactersScreen(viewModel: MainViewModel) {
                     hitPoints = characterHitPoints.toIntOrNull(),
                     maxHitPoints = characterHitPoints.toIntOrNull(),
                     armorClass = characterArmorClass.toIntOrNull(),
+                    lineage = characterLineage,
+                    relationships = characterRelationships,
                     description = characterDescription,
                     notes = characterNotes
                 )
@@ -537,9 +621,15 @@ fun CharactersScreen(viewModel: MainViewModel) {
                         characterLevel = "1"
                         characterHitPoints = "10"
                         characterArmorClass = "10"
+                        characterLineage = ""
                         characterDescription = ""
                         characterNotes = ""
                         selectedCharacterType = CharacterService.CharacterType.PLAYER_CHARACTER
+                        characterRelationships = emptyList()
+                        showAddRelationshipDialog = false
+                        selectedRelatedCharacterId = null
+                        selectedRelationshipType = CharacterService.RelationshipType.OTHER
+                        relationshipDescription = ""
                     }
                 ) {
                     Icon(
@@ -784,6 +874,204 @@ fun CharactersScreen(viewModel: MainViewModel) {
                                     )
                                 }
 
+                                // Lineage Field
+                                OutlinedTextField(
+                                    value = characterLineage,
+                                    onValueChange = { characterLineage = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    label = { Text("Lineage") },
+                                    placeholder = { Text("Enter character lineage or ancestry") },
+                                    minLines = 1,
+                                    maxLines = 2
+                                )
+
+                                // Character Relationships Section
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = MaterialTheme.spacing.small)
+                                ) {
+                                    Text(
+                                        "Character Relationships",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+
+                                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
+                                    // Display existing relationships
+                                    if (characterRelationships.isNotEmpty()) {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            characterRelationships.forEachIndexed { index, relationship ->
+                                                val relatedCharacter = characterService.characters.find { it.id == relationship.relatedCharacterId }
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(vertical = 4.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                                ) {
+                                                    // Relationship info
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        // Relationship type
+                                                        Text(
+                                                            CharacterService.RelationshipType.toString(relationship.relationshipType),
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                                            modifier = Modifier.width(100.dp)
+                                                        )
+
+                                                        // Related character name
+                                                        Text(
+                                                            relatedCharacter?.name ?: "Unknown Character",
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            color = MaterialTheme.colorScheme.primary
+                                                        )
+
+                                                        // Description if available
+                                                        if (relationship.description.isNotEmpty()) {
+                                                            Text(
+                                                                " - ${relationship.description}",
+                                                                style = MaterialTheme.typography.bodyMedium,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                            )
+                                                        }
+                                                    }
+
+                                                    // Delete button
+                                                    IconButton(
+                                                        onClick = {
+                                                            characterRelationships = characterRelationships.toMutableList().apply {
+                                                                removeAt(index)
+                                                            }
+                                                        }
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Close,
+                                                            contentDescription = "Remove Relationship",
+                                                            tint = MaterialTheme.colorScheme.error
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+                                    }
+
+                                    // Add new relationship section
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                                    ) {
+                                        // Dropdown for selecting a character
+                                        var expandedCharacterDropdown by remember { mutableStateOf(false) }
+                                        Box(
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            OutlinedButton(
+                                                onClick = { expandedCharacterDropdown = true },
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text(
+                                                    characterService.characters.find { it.id == selectedRelatedCharacterId }?.name 
+                                                        ?: "Select Character"
+                                                )
+                                            }
+
+                                            DropdownMenu(
+                                                expanded = expandedCharacterDropdown,
+                                                onDismissRequest = { expandedCharacterDropdown = false },
+                                                modifier = Modifier.fillMaxWidth(0.9f)
+                                            ) {
+                                                characterService.characters
+                                                    .filter { it.id != editingCharacterId } // Don't show the current character
+                                                    .forEach { character ->
+                                                        DropdownMenuItem(
+                                                            text = { Text(character.name) },
+                                                            onClick = {
+                                                                selectedRelatedCharacterId = character.id
+                                                                expandedCharacterDropdown = false
+                                                            }
+                                                        )
+                                                    }
+                                            }
+                                        }
+
+                                        // Dropdown for selecting relationship type
+                                        var expandedRelationshipTypeDropdown by remember { mutableStateOf(false) }
+                                        Box(
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            OutlinedButton(
+                                                onClick = { expandedRelationshipTypeDropdown = true },
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text(CharacterService.RelationshipType.toString(selectedRelationshipType))
+                                            }
+
+                                            DropdownMenu(
+                                                expanded = expandedRelationshipTypeDropdown,
+                                                onDismissRequest = { expandedRelationshipTypeDropdown = false },
+                                                modifier = Modifier.fillMaxWidth(0.9f)
+                                            ) {
+                                                CharacterService.RelationshipType.values().forEach { relationType ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(CharacterService.RelationshipType.toString(relationType)) },
+                                                        onClick = {
+                                                            selectedRelationshipType = relationType
+                                                            expandedRelationshipTypeDropdown = false
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        // Add button
+                                        IconButton(
+                                            onClick = {
+                                                if (selectedRelatedCharacterId != null) {
+                                                    val newRelationship = CharacterService.CharacterRelationship(
+                                                        relatedCharacterId = selectedRelatedCharacterId!!,
+                                                        relationshipType = selectedRelationshipType,
+                                                        description = relationshipDescription
+                                                    )
+                                                    characterRelationships = characterRelationships + newRelationship
+
+                                                    // Reset form
+                                                    selectedRelatedCharacterId = null
+                                                    selectedRelationshipType = CharacterService.RelationshipType.OTHER
+                                                    relationshipDescription = ""
+                                                }
+                                            },
+                                            enabled = selectedRelatedCharacterId != null
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Add,
+                                                contentDescription = "Add Relationship",
+                                                tint = if (selectedRelatedCharacterId != null) 
+                                                    MaterialTheme.colorScheme.primary 
+                                                else 
+                                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                            )
+                                        }
+                                    }
+
+                                    // Description field for the relationship
+                                    OutlinedTextField(
+                                        value = relationshipDescription,
+                                        onValueChange = { relationshipDescription = it },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        label = { Text("Relationship Description (Optional)") },
+                                        placeholder = { Text("Enter additional details about this relationship") },
+                                        singleLine = true,
+                                        enabled = selectedRelatedCharacterId != null
+                                    )
+                                }
+
                                 // Description Field
                                 OutlinedTextField(
                                     value = characterDescription,
@@ -827,9 +1115,15 @@ fun CharactersScreen(viewModel: MainViewModel) {
                                             characterLevel = "1"
                                             characterHitPoints = "10"
                                             characterArmorClass = "10"
+                                            characterLineage = ""
                                             characterDescription = ""
                                             characterNotes = ""
                                             selectedCharacterType = CharacterService.CharacterType.PLAYER_CHARACTER
+                                            characterRelationships = emptyList()
+                                            showAddRelationshipDialog = false
+                                            selectedRelatedCharacterId = null
+                                            selectedRelationshipType = CharacterService.RelationshipType.OTHER
+                                            relationshipDescription = ""
                                         }
                                     },
                                     modifier = Modifier.padding(end = MaterialTheme.spacing.small)
@@ -855,6 +1149,8 @@ fun CharactersScreen(viewModel: MainViewModel) {
                                                         hitPoints = characterHitPoints.toIntOrNull() ?: 10,
                                                         maxHitPoints = characterHitPoints.toIntOrNull() ?: 10,
                                                         armorClass = characterArmorClass.toIntOrNull() ?: 10,
+                                                        lineage = characterLineage,
+                                                        relationships = characterRelationships,
                                                         description = characterDescription,
                                                         notes = characterNotes
                                                     )
@@ -867,8 +1163,14 @@ fun CharactersScreen(viewModel: MainViewModel) {
                                                 characterLevel = "1"
                                                 characterHitPoints = "10"
                                                 characterArmorClass = "10"
+                                                characterLineage = ""
                                                 characterDescription = ""
                                                 characterNotes = ""
+                                                characterRelationships = emptyList()
+                                                showAddRelationshipDialog = false
+                                                selectedRelatedCharacterId = null
+                                                selectedRelationshipType = CharacterService.RelationshipType.OTHER
+                                                relationshipDescription = ""
                                                 showNewCharacterForm = false
                                             }
                                         }
@@ -891,7 +1193,8 @@ fun CharactersScreen(viewModel: MainViewModel) {
                         character = selectedCharacter,
                         onEdit = { character ->
                             startEditingCharacter(character)
-                        }
+                        },
+                        characterService = characterService
                     )
                 }
             }

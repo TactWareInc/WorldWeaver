@@ -123,6 +123,70 @@ class CharacterService {
     }
 
     /**
+     * Enum representing types of character relationships
+     */
+    enum class RelationshipType {
+        PARENT,
+        CHILD,
+        SIBLING,
+        SPOUSE,
+        ANCESTOR,
+        DESCENDANT,
+        MENTOR,
+        STUDENT,
+        ALLY,
+        RIVAL,
+        ENEMY,
+        OTHER;
+
+        companion object {
+            fun fromString(value: String): RelationshipType {
+                return when (value.uppercase().replace(" ", "_")) {
+                    "PARENT" -> PARENT
+                    "CHILD" -> CHILD
+                    "SIBLING" -> SIBLING
+                    "SPOUSE" -> SPOUSE
+                    "ANCESTOR" -> ANCESTOR
+                    "DESCENDANT" -> DESCENDANT
+                    "MENTOR" -> MENTOR
+                    "STUDENT" -> STUDENT
+                    "ALLY" -> ALLY
+                    "RIVAL" -> RIVAL
+                    "ENEMY" -> ENEMY
+                    "OTHER" -> OTHER
+                    else -> throw IllegalArgumentException("Unknown relationship type: $value")
+                }
+            }
+
+            fun toString(relationshipType: RelationshipType): String {
+                return when (relationshipType) {
+                    PARENT -> "Parent"
+                    CHILD -> "Child"
+                    SIBLING -> "Sibling"
+                    SPOUSE -> "Spouse"
+                    ANCESTOR -> "Ancestor"
+                    DESCENDANT -> "Descendant"
+                    MENTOR -> "Mentor"
+                    STUDENT -> "Student"
+                    ALLY -> "Ally"
+                    RIVAL -> "Rival"
+                    ENEMY -> "Enemy"
+                    OTHER -> "Other"
+                }
+            }
+        }
+    }
+
+    /**
+     * Data class representing a relationship between characters
+     */
+    data class CharacterRelationship(
+        val relatedCharacterId: String,
+        val relationshipType: RelationshipType,
+        val description: String = ""
+    )
+
+    /**
      * Data class representing a proficiency in D&D 5E
      */
     data class Proficiency(
@@ -306,6 +370,8 @@ class CharacterService {
         val alignment: String = "", // Keeping string for backward compatibility
         val alignmentEnum: Alignment = Alignment.TRUE_NEUTRAL, // New enum version
         val personalityCharacteristics: PersonalityCharacteristics = PersonalityCharacteristics(),
+        val lineage: String = "", // Character's family history or ancestry (kept for backward compatibility)
+        val relationships: List<CharacterRelationship> = emptyList(), // Character's relationships with other characters
         val description: String = "",
         val notes: String = "",
         val inspiration: Boolean = false,
@@ -710,6 +776,8 @@ class CharacterService {
         alignment: String = "",
         alignmentEnum: Alignment = Alignment.TRUE_NEUTRAL,
         personalityCharacteristics: PersonalityCharacteristics = PersonalityCharacteristics(),
+        lineage: String = "",
+        relationships: List<CharacterRelationship> = emptyList(),
         description: String = "",
         notes: String = "",
         inspiration: Boolean = false,
@@ -758,6 +826,8 @@ class CharacterService {
                 alignment = alignment,
                 alignmentEnum = alignmentEnum,
                 personalityCharacteristics = personalityCharacteristics,
+                lineage = lineage,
+                relationships = relationships,
                 description = description,
                 notes = notes,
                 inspiration = inspiration,
@@ -805,6 +875,8 @@ class CharacterService {
         alignment: String? = null,
         alignmentEnum: Alignment? = null,
         personalityCharacteristics: PersonalityCharacteristics? = null,
+        lineage: String? = null,
+        relationships: List<CharacterRelationship>? = null,
         description: String? = null,
         notes: String? = null,
         inspiration: Boolean? = null,
@@ -849,6 +921,8 @@ class CharacterService {
                 alignment = alignment ?: character.alignment,
                 alignmentEnum = alignmentEnum ?: character.alignmentEnum,
                 personalityCharacteristics = personalityCharacteristics ?: character.personalityCharacteristics,
+                lineage = lineage ?: character.lineage,
+                relationships = relationships ?: character.relationships,
                 description = description ?: character.description,
                 notes = notes ?: character.notes,
                 inspiration = inspiration ?: character.inspiration,
