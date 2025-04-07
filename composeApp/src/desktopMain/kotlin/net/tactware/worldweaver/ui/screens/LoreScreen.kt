@@ -40,6 +40,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -53,8 +54,10 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import net.tactware.nimbus.appwide.ui.theme.spacing
 import net.tactware.worldweaver.bl.CampaignService
-import net.tactware.worldweaver.bl.LoreService
+import net.tactware.worldweaver.dal.model.lore.Lore
 import net.tactware.worldweaver.ui.components.ActiveCampaignDisplay
+import net.tactware.worldweaver.ui.viewmodel.LoreScreenAction
+import net.tactware.worldweaver.ui.viewmodel.LoreViewModel
 import org.koin.compose.koinInject
 
 // List of preset tags for lore entries
@@ -73,7 +76,7 @@ private fun LoreEntryForm(
     initialCategory: String = "",
     initialTags: String = "",
     initialRelatedEntries: List<String> = emptyList(),
-    availableLoreEntries: List<LoreService.LoreEntry> = emptyList(),
+    availableLoreEntries: List<Lore> = emptyList(),
     currentEntryId: String? = null,
     onSave: (title: String, content: String, category: String, tags: List<String>, relatedEntries: List<String>) -> Unit,
     onCancel: () -> Unit
@@ -370,53 +373,57 @@ private fun LoreEntryForm(
 @Composable
 fun LoreScreen() {
     val campaignService = koinInject<CampaignService>()
-    val loreService = koinInject<LoreService>()
+    val viewModel = koinInject<LoreViewModel>()
 
     val scrollState = rememberScrollState()
 
-    // State for the selected category tab
-    var selectedCategory by remember { mutableStateOf("All") }
+    // Get state from the ViewModel
+    val state = viewModel.state
+    val selectedCategory = state.selectedCategory
+    val showNewEntryForm = state.showNewEntryForm
+    val editingEntryId = state.editingEntryId
+    val categories = state.categories
 
-    // State for forms and detail view
-    var showNewEntryForm by remember { mutableStateOf(false) }
-    var editingEntryId by remember { mutableStateOf<String?>(null) }
-
-    // Get unique categories from lore entries
-    val categories = remember(loreService.loreEntries) {
-        val uniqueCategories = loreService.loreEntries.map { it.category }.distinct().sorted()
-        listOf("All") + uniqueCategories
-    }
+    // Get lore entries from the ViewModel
+    val loreEntries by viewModel.loreEntries.collectAsState()
 
     // Get entries for the selected category
-    val filteredEntries = remember(selectedCategory, loreService.loreEntries) {
-        if (selectedCategory == "All") {
-            loreService.loreEntries
-        } else {
-            loreService.getLoreEntriesByCategory(selectedCategory)
-        }
-    }
+    val filteredEntries = viewModel.getFilteredEntries()
 
     // Functions for handling lore entry actions
-    fun startEditingEntry(entry: LoreService.LoreEntry) {
-        editingEntryId = entry.id
-        showNewEntryForm = false
+    fun startEditingEntry(entry: Lore) {
+        viewModel.onInteraction(LoreScreenAction.StartEditingEntry(entry.id))
     }
 
     fun cancelEditing() {
-        editingEntryId = null
-        showNewEntryForm = false
+        viewModel.onInteraction(LoreScreenAction.CancelEditing)
     }
 
     fun saveEditedEntry(title: String, content: String, category: String, tags: List<String>, relatedEntries: List<String>) {
         editingEntryId?.let { id ->
-            loreService.updateLoreEntry(id, title, content, category, tags, relatedEntries)
-            editingEntryId = null
+            viewModel.onInteraction(
+                LoreScreenAction.UpdateLoreEntry(
+                    id = id,
+                    title = title,
+                    content = content,
+                    category = category,
+                    tags = tags,
+                    relatedEntries = relatedEntries
+                )
+            )
         }
     }
 
     fun createNewEntry(title: String, content: String, category: String, tags: List<String>, relatedEntries: List<String>) {
-        loreService.addLoreEntry(title, content, category, tags, relatedEntries)
-        showNewEntryForm = false
+        viewModel.onInteraction(
+            LoreScreenAction.CreateLoreEntry(
+                title = title,
+                content = content,
+                category = category,
+                tags = tags,
+                relatedEntries = relatedEntries
+            )
+        )
     }
 
     Column(
@@ -458,7 +465,7 @@ fun LoreScreen() {
             // New Entry Button
             if (showNewEntryForm) {
                 OutlinedButton(
-                    onClick = { showNewEntryForm = false }
+                    onClick = { viewModel.onInteraction(LoreScreenAction.HideNewEntryForm) }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
@@ -469,10 +476,7 @@ fun LoreScreen() {
                 }
             } else {
                 Button(
-                    onClick = { 
-                        showNewEntryForm = true
-                        editingEntryId = null
-                    }
+                    onClick = { viewModel.onInteraction(LoreScreenAction.ShowNewEntryForm) }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
@@ -487,18 +491,26 @@ fun LoreScreen() {
         // New Entry Form
         AnimatedVisibility(visible = showNewEntryForm) {
             LoreEntryForm(
-                availableLoreEntries = loreService.loreEntries,
+                availableLoreEntries = loreEntries,
                 currentEntryId = null,
                 onSave = { title, content, category, tags, relatedEntries ->
-                    createNewEntry(title, content, category, tags, relatedEntries)
+                    viewModel.onInteraction(
+                        LoreScreenAction.CreateLoreEntry(
+                            title = title,
+                            content = content,
+                            category = category,
+                            tags = tags,
+                            relatedEntries = relatedEntries
+                        )
+                    )
                 },
-                onCancel = { showNewEntryForm = false }
+                onCancel = { viewModel.onInteraction(LoreScreenAction.HideNewEntryForm) }
             )
         }
 
         // Edit Entry Form
         val editingEntry = editingEntryId?.let { id ->
-            loreService.loreEntries.find { it.id == id }
+            loreEntries.find { it.id == id }
         }
 
         AnimatedVisibility(visible = editingEntry != null) {
@@ -510,12 +522,21 @@ fun LoreScreen() {
                     initialCategory = entry.category,
                     initialTags = entry.tags.joinToString(", "),
                     initialRelatedEntries = entry.relatedEntries,
-                    availableLoreEntries = loreService.loreEntries.filter { it.id != entry.id },
+                    availableLoreEntries = loreEntries.filter { it.id != entry.id },
                     currentEntryId = entry.id,
                     onSave = { title, content, category, tags, relatedEntries ->
-                        saveEditedEntry(title, content, category, tags, relatedEntries)
+                        viewModel.onInteraction(
+                            LoreScreenAction.UpdateLoreEntry(
+                                id = entry.id,
+                                title = title,
+                                content = content,
+                                category = category,
+                                tags = tags,
+                                relatedEntries = relatedEntries
+                            )
+                        )
                     },
-                    onCancel = { cancelEditing() }
+                    onCancel = { viewModel.onInteraction(LoreScreenAction.CancelEditing) }
                 )
             }
         }
@@ -528,7 +549,7 @@ fun LoreScreen() {
                 categories.forEach { category ->
                     Tab(
                         selected = selectedCategory == category,
-                        onClick = { selectedCategory = category },
+                        onClick = { viewModel.onInteraction(LoreScreenAction.SelectCategory(category)) },
                         text = { Text(category) }
                     )
                 }
@@ -547,7 +568,7 @@ fun LoreScreen() {
                 filteredEntries.forEach { entry ->
                     LoreEntryCard(
                         entry = entry,
-                        onEdit = { startEditingEntry(entry) },
+                        onEdit = { viewModel.onInteraction(LoreScreenAction.StartEditingEntry(entry.id)) },
                         onView = { /* View detail functionality could be added here */ }
                     )
                 }
@@ -559,10 +580,10 @@ fun LoreScreen() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LoreEntryCard(
-    entry: LoreService.LoreEntry,
+    entry: Lore,
     onEdit: () -> Unit = {},
     onView: () -> Unit = {},
-    loreService: LoreService = koinInject()
+    viewModel: LoreViewModel = koinInject()
 ) {
     ElevatedCard(
         modifier = Modifier
@@ -683,7 +704,7 @@ private fun LoreEntryCard(
                             val remainingCount = entry.relatedEntries.size - displayCount
 
                             displayEntries.forEach { relatedId ->
-                                val relatedEntry = loreService.getLoreEntryById(relatedId)
+                                val relatedEntry = viewModel.getLoreEntryById(relatedId)
                                 if (relatedEntry != null) {
                                     SuggestionChip(
                                         onClick = { /* View related entry */ },

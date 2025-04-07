@@ -5,7 +5,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import net.tactware.worldweaver.bl.CampaignService
-import net.tactware.worldweaver.bl.CharacterService
 import org.koin.core.annotation.Factory
 
 /**
@@ -15,7 +14,6 @@ import org.koin.core.annotation.Factory
 @Factory
 class MainViewModel(
     private val campaignService: CampaignService,
-    private val characterService: CharacterService
 ) : ViewModel() {
 
     // UI State
@@ -77,51 +75,7 @@ class MainViewModel(
                     campaignService.setActiveCampaign(null)
                 }
             }
-            is MainScreenAction.CreateCharacter -> {
-                characterService.addCharacter(
-                    name = action.name,
-                    type = action.type,
-                    race = action.race,
-                    characterClass = action.characterClass,
-                    subclass = action.subclass,
-                    level = action.level,
-                    experiencePoints = action.experiencePoints,
-                    abilityScores = action.abilityScores,
-                    hitPoints = action.hitPoints,
-                    maxHitPoints = action.maxHitPoints,
-                    armorClass = action.armorClass,
-                    background = action.background,
-                    alignmentEnum = action.alignment,
-                    lineage = action.lineage,
-                    relationships = action.relationships,
-                    description = action.description,
-                    notes = action.notes
-                )
-            }
-            is MainScreenAction.UpdateCharacter -> {
-                characterService.updateCharacter(
-                    id = action.id,
-                    name = action.name,
-                    type = action.type,
-                    race = action.race,
-                    characterClass = action.characterClass,
-                    subclass = action.subclass,
-                    level = action.level,
-                    experiencePoints = action.experiencePoints,
-                    abilityScores = action.abilityScores,
-                    hitPoints = action.hitPoints,
-                    maxHitPoints = action.maxHitPoints,
-                    armorClass = action.armorClass,
-                    background = action.background,
-                    alignmentEnum = action.alignment,
-                    lineage = action.lineage,
-                    relationships = action.relationships,
-                    description = action.description,
-                    notes = action.notes
-                )
-            }
             is MainScreenAction.DeleteCharacter -> {
-                characterService.removeCharacter(action.characterId)
             }
         }
     }
@@ -208,59 +162,6 @@ sealed class MainScreenAction {
      */
     data class DeleteCampaign(val campaignId: String) : MainScreenAction()
 
-    /**
-     * Create a new character.
-     */
-    data class CreateCharacter(
-        val name: String,
-        val type: CharacterService.CharacterType,
-        val race: String,
-        val characterClass: String = "",
-        val subclass: String = "",
-        val level: Int = 1,
-        val experiencePoints: Int = 0,
-        val abilityScores: Map<CharacterService.Ability, Int> = mapOf(
-            CharacterService.Ability.STRENGTH to 10,
-            CharacterService.Ability.DEXTERITY to 10,
-            CharacterService.Ability.CONSTITUTION to 10,
-            CharacterService.Ability.INTELLIGENCE to 10,
-            CharacterService.Ability.WISDOM to 10,
-            CharacterService.Ability.CHARISMA to 10
-        ),
-        val hitPoints: Int = 10,
-        val maxHitPoints: Int = 10,
-        val armorClass: Int = 10,
-        val background: String = "",
-        val alignment: CharacterService.Alignment = CharacterService.Alignment.TRUE_NEUTRAL,
-        val lineage: String = "",
-        val relationships: List<CharacterService.CharacterRelationship> = emptyList(),
-        val description: String = "",
-        val notes: String = ""
-    ) : MainScreenAction()
-
-    /**
-     * Update an existing character.
-     */
-    data class UpdateCharacter(
-        val id: String,
-        val name: String? = null,
-        val type: CharacterService.CharacterType? = null,
-        val race: String? = null,
-        val characterClass: String? = null,
-        val subclass: String? = null,
-        val level: Int? = null,
-        val experiencePoints: Int? = null,
-        val abilityScores: Map<CharacterService.Ability, Int>? = null,
-        val hitPoints: Int? = null,
-        val maxHitPoints: Int? = null,
-        val armorClass: Int? = null,
-        val background: String? = null,
-        val alignment: CharacterService.Alignment? = null,
-        val lineage: String? = null,
-        val relationships: List<CharacterService.CharacterRelationship>? = null,
-        val description: String? = null,
-        val notes: String? = null
-    ) : MainScreenAction()
 
     /**
      * Delete a character.

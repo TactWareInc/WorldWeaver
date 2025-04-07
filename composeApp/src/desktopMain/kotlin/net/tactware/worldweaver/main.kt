@@ -59,6 +59,7 @@ import net.tactware.worldweaver.ui.screens.EncountersScreen
 import net.tactware.worldweaver.ui.screens.LocationsScreen
 import net.tactware.worldweaver.ui.screens.LoreScreen
 import net.tactware.worldweaver.ui.theme.AppTheme
+import net.tactware.worldweaver.ui.viewmodel.CharacterViewModel
 import net.tactware.worldweaver.ui.viewmodel.MainScreenAction
 import net.tactware.worldweaver.ui.viewmodel.MainViewModel
 import org.koin.compose.koinInject
@@ -329,10 +330,10 @@ fun main() = application {
                                         DashboardScreen(viewModel)
                                     }
                                     1 -> { // Campaigns
-                                        CampaignsScreen(viewModel)
+                                        CampaignsScreen()
                                     }
                                     2 -> { // Characters
-                                        CharactersScreen(viewModel)
+                                        CharactersScreen()
                                     }
                                     3 -> { // Locations
                                         LocationsScreen()

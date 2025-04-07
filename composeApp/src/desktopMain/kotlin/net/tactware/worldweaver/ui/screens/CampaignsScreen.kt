@@ -51,11 +51,12 @@ import androidx.compose.ui.unit.dp
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import net.tactware.nimbus.appwide.ui.theme.spacing
-import net.tactware.worldweaver.bl.CampaignService
 import net.tactware.worldweaver.dal.model.Campaign
+import net.tactware.worldweaver.dal.model.GameMechanics
 import net.tactware.worldweaver.ui.components.ActiveCampaignDisplay
-import net.tactware.worldweaver.ui.viewmodel.MainScreenAction
-import net.tactware.worldweaver.ui.viewmodel.MainViewModel
+import net.tactware.worldweaver.ui.viewmodel.CampaignScreenAction
+import net.tactware.worldweaver.ui.viewmodel.CampaignViewModel
+import androidx.compose.runtime.collectAsState
 import org.koin.compose.koinInject
 
 @Composable
@@ -195,57 +196,72 @@ private fun CampaignItem(
 }
 
 @Composable
-fun CampaignsScreen(viewModel: MainViewModel) {
-    val campaignService = koinInject<CampaignService>()
+fun CampaignsScreen() {
+    val viewModel = koinInject<CampaignViewModel>()
 
-    // State for campaign forms
-    var showNewCampaignForm by remember { mutableStateOf(false) }
-    var campaignName by remember { mutableStateOf("") }
-    var campaignDescription by remember { mutableStateOf("") }
-    var campaignSetting by remember { mutableStateOf("") }
-    var campaignNotes by remember { mutableStateOf("") }
+    // Get state from the ViewModel
+    val state = viewModel.state
+    val showNewCampaignForm = state.showNewCampaignForm
+    val editingCampaignId = state.editingCampaignId
+    val showEditForm = editingCampaignId != null
 
-    // State for editing campaigns
-    var editingCampaignId by remember { mutableStateOf<String?>(null) }
-    var showEditForm by remember { mutableStateOf(false) }
+    // Get form fields from the ViewModel state
+    val campaignName = state.campaignName
+    val campaignDescription = state.campaignDescription
+    val campaignSetting = state.campaignSetting
+    val campaignNotes = state.campaignNotes
+    val campaignMechanics = state.campaignMechanics
 
-    // State for selected campaign (for list-detail view)
-    var selectedCampaign by remember { mutableStateOf<Campaign?>(null) }
+    // Get campaigns from the ViewModel
+    val campaigns = viewModel.campaigns.collectAsState().value
+
+    // Get active campaign
+    val activeCampaign = viewModel.getActiveCampaign()
+
+    // Function to update form fields
+    fun updateCampaignName(name: String) {
+        viewModel.onInteraction(CampaignScreenAction.UpdateCampaignName(name))
+    }
+
+    fun updateCampaignDescription(description: String) {
+        viewModel.onInteraction(CampaignScreenAction.UpdateCampaignDescription(description))
+    }
+
+    fun updateCampaignSetting(setting: String) {
+        viewModel.onInteraction(CampaignScreenAction.UpdateCampaignSetting(setting))
+    }
+
+    fun updateCampaignNotes(notes: String) {
+        viewModel.onInteraction(CampaignScreenAction.UpdateCampaignNotes(notes))
+    }
+
+    fun updateCampaignMechanics(mechanics: GameMechanics) {
+        viewModel.onInteraction(CampaignScreenAction.UpdateCampaignMechanics(mechanics))
+    }
 
     // Function to start editing a campaign
     fun startEditingCampaign(campaign: Campaign) {
-        campaignName = campaign.name
-        campaignDescription = campaign.description
-        campaignSetting = campaign.setting
-        campaignNotes = campaign.notes
-        editingCampaignId = campaign.id
-        showEditForm = true
-        showNewCampaignForm = false
+        viewModel.onInteraction(CampaignScreenAction.StartEditingCampaign(campaign.id))
     }
 
     // Function to cancel editing
     fun cancelEditing() {
-        editingCampaignId = null
-        showEditForm = false
-        campaignName = ""
-        campaignDescription = ""
-        campaignSetting = ""
-        campaignNotes = ""
+        viewModel.onInteraction(CampaignScreenAction.CancelEditing)
     }
 
     // Function to save edited campaign
     fun saveEditedCampaign() {
         editingCampaignId?.let { id ->
             viewModel.onInteraction(
-                MainScreenAction.UpdateCampaign(
+                CampaignScreenAction.UpdateCampaign(
                     id = id,
                     name = campaignName,
                     description = campaignDescription,
                     setting = campaignSetting,
-                    notes = campaignNotes
+                    notes = campaignNotes,
+                    mechanics = campaignMechanics
                 )
             )
-            cancelEditing()
         }
     }
 
@@ -271,7 +287,6 @@ fun CampaignsScreen(viewModel: MainViewModel) {
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
 
             // Display active campaign at the top
-            val activeCampaign = campaignService.campaigns.find { it.id == campaignService.activeCampaignId }
             ActiveCampaignDisplay(activeCampaign)
         }
 
@@ -291,7 +306,7 @@ fun CampaignsScreen(viewModel: MainViewModel) {
             // New Campaign Button
             if (showNewCampaignForm) {
                 OutlinedButton(
-                    onClick = { showNewCampaignForm = false }
+                    onClick = { viewModel.onInteraction(CampaignScreenAction.HideNewCampaignForm) }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
@@ -302,15 +317,7 @@ fun CampaignsScreen(viewModel: MainViewModel) {
                 }
             } else {
                 Button(
-                    onClick = { 
-                        showNewCampaignForm = true
-                        showEditForm = false
-                        editingCampaignId = null
-                        campaignName = ""
-                        campaignDescription = ""
-                        campaignSetting = ""
-                        campaignNotes = ""
-                    }
+                    onClick = { viewModel.onInteraction(CampaignScreenAction.ShowNewCampaignForm) }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
@@ -348,7 +355,7 @@ fun CampaignsScreen(viewModel: MainViewModel) {
                         // Name Field
                         OutlinedTextField(
                             value = campaignName,
-                            onValueChange = { campaignName = it },
+                            onValueChange = { updateCampaignName(it) },
                             modifier = Modifier.fillMaxWidth(),
                             label = { Text("Name") },
                             placeholder = { Text("Enter campaign name") },
@@ -363,7 +370,7 @@ fun CampaignsScreen(viewModel: MainViewModel) {
                         // Setting Field
                         OutlinedTextField(
                             value = campaignSetting,
-                            onValueChange = { campaignSetting = it },
+                            onValueChange = { updateCampaignSetting(it) },
                             modifier = Modifier.fillMaxWidth(),
                             label = { Text("Setting") },
                             placeholder = { Text("Enter campaign setting") },
@@ -378,7 +385,7 @@ fun CampaignsScreen(viewModel: MainViewModel) {
                         // Description Field
                         OutlinedTextField(
                             value = campaignDescription,
-                            onValueChange = { campaignDescription = it },
+                            onValueChange = { updateCampaignDescription(it) },
                             modifier = Modifier.fillMaxWidth(),
                             label = { Text("Description") },
                             placeholder = { Text("Enter campaign description") },
@@ -394,12 +401,24 @@ fun CampaignsScreen(viewModel: MainViewModel) {
                         // Notes Field
                         OutlinedTextField(
                             value = campaignNotes,
-                            onValueChange = { campaignNotes = it },
+                            onValueChange = { updateCampaignNotes(it) },
                             modifier = Modifier.fillMaxWidth(),
                             label = { Text("Notes") },
                             placeholder = { Text("Enter campaign notes (optional)") },
                             minLines = 2,
                             maxLines = 3
+                        )
+
+                        // Mechanics Field
+                        OutlinedTextField(
+                            value = campaignMechanics.displayName,
+                            onValueChange = { mechanicsName ->
+                                updateCampaignMechanics(GameMechanics.fromString(mechanicsName))
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Mechanics") },
+                            placeholder = { Text("Enter game mechanics (e.g., 5E, Pathfinder)") },
+                            singleLine = true
                         )
                     }
 
@@ -415,11 +434,7 @@ fun CampaignsScreen(viewModel: MainViewModel) {
                                 if (showEditForm) {
                                     cancelEditing()
                                 } else {
-                                    showNewCampaignForm = false
-                                    campaignName = ""
-                                    campaignDescription = ""
-                                    campaignSetting = ""
-                                    campaignNotes = ""
+                                    viewModel.onInteraction(CampaignScreenAction.HideNewCampaignForm)
                                 }
                             },
                             modifier = Modifier.padding(end = MaterialTheme.spacing.small)
@@ -435,19 +450,14 @@ fun CampaignsScreen(viewModel: MainViewModel) {
                                         saveEditedCampaign()
                                     } else {
                                         viewModel.onInteraction(
-                                            MainScreenAction.CreateCampaign(
+                                            CampaignScreenAction.CreateCampaign(
                                                 name = campaignName,
                                                 description = campaignDescription,
                                                 setting = campaignSetting,
-                                                notes = campaignNotes
+                                                notes = campaignNotes,
+                                                mechanics = campaignMechanics
                                             )
                                         )
-                                        // Reset form
-                                        campaignName = ""
-                                        campaignDescription = ""
-                                        campaignSetting = ""
-                                        campaignNotes = ""
-                                        showNewCampaignForm = false
                                     }
                                 }
                             },
@@ -476,13 +486,13 @@ fun CampaignsScreen(viewModel: MainViewModel) {
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
             ) {
-                items(campaignService.campaigns) { campaign ->
-                    val isActive = campaign.id == campaignService.activeCampaignId
+                items(campaigns) { campaign ->
+                    val isActive = activeCampaign?.id == campaign.id
                     CampaignItem(
                         campaign = campaign,
                         isActive = isActive,
                         onSetActive = {
-                            viewModel.onInteraction(MainScreenAction.SetActiveCampaign(campaign.id))
+                            viewModel.onInteraction(CampaignScreenAction.SetActiveCampaign(campaign.id))
                         },
                         onEdit = {
                             startEditingCampaign(campaign)

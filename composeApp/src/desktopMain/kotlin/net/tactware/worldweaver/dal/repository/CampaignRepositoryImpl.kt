@@ -3,6 +3,7 @@ package net.tactware.worldweaver.dal.repository
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import net.tactware.worldweaver.dal.model.Campaign
+import net.tactware.worldweaver.dal.model.GameMechanics
 import net.tactware.worldweaver.dal.db.DatabaseProvider
 import org.koin.core.annotation.Single
 
@@ -10,7 +11,7 @@ import org.koin.core.annotation.Single
  * Implementation of the CampaignRepository interface.
  * Handles database operations for Campaign entities.
  */
-@Single
+@Single(binds = [CampaignRepository::class])
 class CampaignRepositoryImpl(
     private val databaseProvider: DatabaseProvider
 ) : CampaignRepository {
@@ -27,6 +28,7 @@ class CampaignRepositoryImpl(
         val activeQuests: String, // JSON string
         val completedQuests: String, // JSON string
         val notes: String,
+        val mechanics: String = "5E", // Default to 5E
         val createdAt: String, // ISO-8601 string
         val updatedAt: String // ISO-8601 string
     ) {
@@ -41,6 +43,7 @@ class CampaignRepositoryImpl(
                 activeQuests = Json.decodeFromString(activeQuests),
                 completedQuests = Json.decodeFromString(completedQuests),
                 notes = notes,
+                mechanics = GameMechanics.fromString(mechanics),
                 createdAt = Instant.parse(createdAt),
                 updatedAt = Instant.parse(updatedAt)
             )
@@ -60,6 +63,7 @@ class CampaignRepositoryImpl(
             activeQuests = Json.encodeToString(activeQuests),
             completedQuests = Json.encodeToString(completedQuests),
             notes = notes,
+            mechanics = mechanics.toString(),
             createdAt = createdAt.toString(),
             updatedAt = updatedAt.toString()
         )
@@ -120,8 +124,9 @@ class CampaignRepositoryImpl(
         activeQuests: List<String>,
         completedQuests: List<String>,
         notes: String,
+        mechanics: GameMechanics,
         createdAt: Instant,
-        updatedAt: Instant
+        updatedAt: Instant,
     ) {
         try {
             val db = databaseProvider.getDatabase()
@@ -135,7 +140,8 @@ class CampaignRepositoryImpl(
                 completedQuests = Json.encodeToString(completedQuests),
                 notes = notes,
                 createdAt = createdAt.toString(),
-                updatedAt = updatedAt.toString()
+                updatedAt = updatedAt.toString(),
+                mechanics = mechanics.name
             )
         } catch (e: Exception) {
             println("Error inserting campaign: ${e.message}")
@@ -151,6 +157,7 @@ class CampaignRepositoryImpl(
         activeQuests: List<String>,
         completedQuests: List<String>,
         notes: String,
+        mechanics: GameMechanics,
         updatedAt: Instant
     ) {
         try {
@@ -164,6 +171,7 @@ class CampaignRepositoryImpl(
                 completedQuests = Json.encodeToString(completedQuests),
                 notes = notes,
                 updatedAt = updatedAt.toString(),
+                mechanics = mechanics.name,
                 id = id
             )
         } catch (e: Exception) {

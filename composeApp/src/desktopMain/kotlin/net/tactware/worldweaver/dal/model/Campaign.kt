@@ -15,6 +15,7 @@ data class Campaign(
     val activeQuests: List<String> = emptyList(), // Names or IDs of active quests
     val completedQuests: List<String> = emptyList(), // Names or IDs of completed quests
     val notes: String = "",
+    val mechanics: GameMechanics = GameMechanics.FIFTH_EDITION, // Game mechanics system
     val createdAt: Instant = Clock.System.now(),
     val updatedAt: Instant = Clock.System.now()
 ) {
