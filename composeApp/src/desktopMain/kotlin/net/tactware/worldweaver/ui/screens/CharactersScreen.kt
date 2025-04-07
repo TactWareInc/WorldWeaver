@@ -541,7 +541,7 @@ fun CharactersScreen() {
                 }
             }
 
-            // Character detail
+            // Character detail or form
             Card(
                 modifier = Modifier
                     .weight(2f)
@@ -550,10 +550,184 @@ fun CharactersScreen() {
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 )
             ) {
-                CharacterDetail(
-                    character = selectedCharacter,
-                    onEdit = { startEditingCharacter(it) }
-                )
+                if (showNewCharacterForm) {
+                    // New Character Form
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(MaterialTheme.spacing.medium)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                    ) {
+                        Text(
+                            "Create New Character",
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
+                        // Name field
+                        OutlinedTextField(
+                            value = state.name,
+                            onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredName(it)) },
+                            label = { Text("Name*") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Type field (dropdown)
+                        var typeExpanded by remember { mutableStateOf(false) }
+                        OutlinedTextField(
+                            value = state.type.toString(),
+                            onValueChange = { },
+                            label = { Text("Type*") },
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            trailingIcon = {
+                                IconButton(onClick = { typeExpanded = true }) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Select Type")
+                                }
+                            }
+                        )
+                        DropdownMenu(
+                            expanded = typeExpanded,
+                            onDismissRequest = { typeExpanded = false }
+                        ) {
+                            CharacterType.values().forEach { type ->
+                                DropdownMenuItem(
+                                    text = { Text(type.toString()) },
+                                    onClick = {
+                                        viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredType(type))
+                                        typeExpanded = false
+                                    }
+                                )
+                            }
+                        }
+
+                        // Race field
+                        OutlinedTextField(
+                            value = state.race,
+                            onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredRace(it)) },
+                            label = { Text("Race*") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Class field
+                        OutlinedTextField(
+                            value = state.characterClass,
+                            onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredClass(it)) },
+                            label = { Text("Class") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Subclass field
+                        OutlinedTextField(
+                            value = state.subclass,
+                            onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredSubclass(it)) },
+                            label = { Text("Subclass") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Level field
+                        OutlinedTextField(
+                            value = state.level?.toString() ?: "",
+                            onValueChange = { 
+                                val level = it.toIntOrNull()
+                                viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredLevel(level))
+                            },
+                            label = { Text("Level") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Hit Points field
+                        OutlinedTextField(
+                            value = state.hitPoints?.toString() ?: "",
+                            onValueChange = { 
+                                val hp = it.toIntOrNull()
+                                viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredHitPoints(hp))
+                            },
+                            label = { Text("Hit Points") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Max Hit Points field
+                        OutlinedTextField(
+                            value = state.maxHitPoints?.toString() ?: "",
+                            onValueChange = { 
+                                val maxHp = it.toIntOrNull()
+                                viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredMaxHitPoints(maxHp))
+                            },
+                            label = { Text("Max Hit Points") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Armor Class field
+                        OutlinedTextField(
+                            value = state.armorClass?.toString() ?: "",
+                            onValueChange = { 
+                                val ac = it.toIntOrNull()
+                                viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredArmorClass(ac))
+                            },
+                            label = { Text("Armor Class") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Description field
+                        OutlinedTextField(
+                            value = state.description,
+                            onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredDescription(it)) },
+                            label = { Text("Description") },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 3
+                        )
+
+                        // Notes field
+                        OutlinedTextField(
+                            value = state.notes,
+                            onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredNotes(it)) },
+                            label = { Text("Notes") },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 3
+                        )
+
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+                        // Form actions
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("* Required fields", style = MaterialTheme.typography.bodySmall)
+
+                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+
+                            OutlinedButton(
+                                onClick = { hideNewCharacterForm() }
+                            ) {
+                                Text("Cancel")
+                            }
+
+                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+
+                            Button(
+                                onClick = { viewModel.onInteraction(CharacterInteraction.DataEntry.SubmitCreate) },
+                                enabled = state.isFormValid
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Save",
+                                    modifier = Modifier.padding(end = MaterialTheme.spacing.small)
+                                )
+                                Text("Create Character")
+                            }
+                        }
+                    }
+                } else {
+                    CharacterDetail(
+                        character = selectedCharacter,
+                        onEdit = { startEditingCharacter(it) }
+                    )
+                }
             }
         }
     }

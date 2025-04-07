@@ -1,0 +1,87 @@
+-- Initial schema creation
+CREATE TABLE IF NOT EXISTS Campaign (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    setting TEXT NOT NULL,
+    playerCharacters TEXT NOT NULL, -- Stored as JSON array
+    activeQuests TEXT NOT NULL, -- Stored as JSON array
+    completedQuests TEXT NOT NULL, -- Stored as JSON array
+    notes TEXT NOT NULL,
+    mechanics TEXT NOT NULL, -- Stored as JSON map
+    createdAt TEXT NOT NULL, -- ISO-8601 format
+    updatedAt TEXT NOT NULL -- ISO-8601 format
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS CampaignFts USING fts4(
+    name TEXT,
+    description TEXT,
+    setting TEXT,
+    notes TEXT,
+    content='Campaign',
+    tokenize = 'unicode61'
+);
+
+-- Add Character table
+CREATE TABLE IF NOT EXISTS Character (
+    id TEXT PRIMARY KEY NOT NULL,
+    campaignId TEXT NOT NULL,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL, -- Stored as enum name
+    race TEXT NOT NULL,
+    characterClass TEXT NOT NULL,
+    subclass TEXT NOT NULL,
+    level INTEGER NOT NULL,
+    experiencePoints INTEGER NOT NULL,
+    abilityScores TEXT NOT NULL, -- Stored as JSON map
+    hitPoints INTEGER NOT NULL,
+    maxHitPoints INTEGER NOT NULL,
+    temporaryHitPoints INTEGER NOT NULL,
+    armorClass INTEGER NOT NULL,
+    background TEXT NOT NULL,
+    alignment TEXT NOT NULL, -- Stored as enum name
+    description TEXT NOT NULL,
+    notes TEXT NOT NULL,
+    items TEXT NOT NULL, -- Stored as JSON array
+    currency TEXT NOT NULL, -- Stored as JSON map
+    features TEXT NOT NULL, -- Stored as JSON array
+    createdAt TEXT NOT NULL, -- ISO-8601 format
+    updatedAt TEXT NOT NULL, -- ISO-8601 format
+    FOREIGN KEY (campaignId) REFERENCES Campaign(id)
+);
+
+-- Create FTS table for Character
+CREATE VIRTUAL TABLE IF NOT EXISTS CharacterFts USING fts4(
+    name TEXT,
+    race TEXT,
+    characterClass TEXT,
+    description TEXT,
+    notes TEXT,
+    content='Character',
+    tokenize = 'unicode61'
+);
+
+
+-- Add Lore table
+CREATE TABLE IF NOT EXISTS Lore (
+    id TEXT PRIMARY KEY NOT NULL,
+    campaignId TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    category TEXT NOT NULL,
+    tags TEXT NOT NULL, -- Stored as JSON array
+    relatedEntries TEXT NOT NULL, -- Stored as JSON array
+    createdAt TEXT NOT NULL, -- ISO-8601 format
+    updatedAt TEXT NOT NULL, -- ISO-8601 format
+    FOREIGN KEY (campaignId) REFERENCES Campaign(id)
+);
+
+-- Create FTS table for Lore
+CREATE VIRTUAL TABLE IF NOT EXISTS LoreFts USING fts4(
+    title TEXT,
+    content TEXT,
+    category TEXT,
+    tags TEXT,
+    content='Lore',
+    tokenize = 'unicode61'
+);

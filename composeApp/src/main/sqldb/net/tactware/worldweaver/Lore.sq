@@ -58,3 +58,22 @@ WHERE id = ?;
 
 deleteLoreEntry:
 DELETE FROM Lore WHERE id = ?;
+
+
+-- Create triggers for Lore FTS table
+CREATE TRIGGER lore_ai AFTER INSERT ON Lore BEGIN
+    INSERT INTO LoreFts(rowid, title, content, category, tags)
+    VALUES (new.id, new.title, new.content, new.category, new.tags);
+END;
+
+CREATE TRIGGER lore_ad AFTER DELETE ON Lore BEGIN
+    INSERT INTO LoreFts(LoreFts, rowid, title, content, category, tags)
+    VALUES ('delete', old.id, old.title, old.content, old.category, old.tags);
+END;
+
+CREATE TRIGGER lore_au AFTER UPDATE ON Lore BEGIN
+    INSERT INTO LoreFts(LoreFts, rowid, title, content, category, tags)
+    VALUES ('delete', old.id, old.title, old.content, old.category, old.tags);
+    INSERT INTO LoreFts(rowid, title, content, category, tags)
+    VALUES (new.id, new.title, new.content, new.category, new.tags);
+END;

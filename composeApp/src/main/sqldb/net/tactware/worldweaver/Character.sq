@@ -73,3 +73,21 @@ WHERE id = ?;
 
 deleteCharacter:
 DELETE FROM Character WHERE id = ?;
+
+-- Create triggers for Character FTS table
+CREATE TRIGGER character_ai AFTER INSERT ON Character BEGIN
+    INSERT INTO CharacterFts(rowid, name, race, characterClass, description, notes)
+    VALUES (new.id, new.name, new.race, new.characterClass, new.description, new.notes);
+END;
+
+CREATE TRIGGER character_ad AFTER DELETE ON Character BEGIN
+    INSERT INTO CharacterFts(CharacterFts, rowid, name, race, characterClass, description, notes)
+    VALUES ('delete', old.id, old.name, old.race, old.characterClass, old.description, old.notes);
+END;
+
+CREATE TRIGGER character_au AFTER UPDATE ON Character BEGIN
+    INSERT INTO CharacterFts(CharacterFts, rowid, name, race, characterClass, description, notes)
+    VALUES ('delete', old.id, old.name, old.race, old.characterClass, old.description, old.notes);
+    INSERT INTO CharacterFts(rowid, name, race, characterClass, description, notes)
+    VALUES (new.id, new.name, new.race, new.characterClass, new.description, new.notes);
+END;

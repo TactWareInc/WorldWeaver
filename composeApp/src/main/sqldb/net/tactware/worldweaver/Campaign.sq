@@ -76,3 +76,20 @@ WHERE id = ?;
 
 deleteCampaign:
 DELETE FROM Campaign WHERE id = ?;
+
+CREATE TRIGGER campaign_ai AFTER INSERT ON Campaign BEGIN
+    INSERT INTO CampaignFts(rowid, name, description, setting, notes)
+    VALUES (new.id, new.name, new.description, new.setting, new.notes);
+END;
+
+CREATE TRIGGER campaign_ad AFTER DELETE ON Campaign BEGIN
+    INSERT INTO CampaignFts(CampaignFts, rowid, name, description, setting, notes)
+    VALUES ('delete', old.id, old.name, old.description, old.setting, old.notes);
+END;
+
+CREATE TRIGGER campaign_au AFTER UPDATE ON Campaign BEGIN
+    INSERT INTO CampaignFts(CampaignFts, rowid, name, description, setting, notes)
+    VALUES ('delete', old.id, old.name, old.description, old.setting, old.notes);
+    INSERT INTO CampaignFts(rowid, name, description, setting, notes)
+    VALUES (new.id, new.name, new.description, new.setting, new.notes);
+END;
