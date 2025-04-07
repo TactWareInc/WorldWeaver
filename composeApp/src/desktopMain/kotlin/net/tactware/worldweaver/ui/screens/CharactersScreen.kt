@@ -37,6 +37,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -406,7 +409,6 @@ private fun CharacterDetail(
 @Composable
 fun CharactersScreen() {
     val viewModel = koinInject<CharacterViewModel>()
-    val campaignService = koinInject<CampaignService>()
 
     // Get state from the ViewModel
     val state = viewModel.state
@@ -419,7 +421,7 @@ fun CharactersScreen() {
     val characters = viewModel.getFilteredCharacters()
 
     // Get active campaign
-    val activeCampaign = campaignService.activeCampaign
+    val activeCampaign = viewModel.activeCampaign
 
     // Get selected character
     val selectedCharacter = characters.find { it.id == selectedCharacterId }
@@ -570,36 +572,29 @@ fun CharactersScreen() {
                         OutlinedTextField(
                             value = state.name,
                             onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredName(it)) },
-                            label = { Text("Name*") },
-                            modifier = Modifier.fillMaxWidth()
+                            label = { Text("Name") },
+                            modifier = Modifier.fillMaxWidth(),
+                            isError = state.name.isEmpty()
                         )
 
-                        // Type field (dropdown)
-                        var typeExpanded by remember { mutableStateOf(false) }
-                        OutlinedTextField(
-                            value = state.type.toString(),
-                            onValueChange = { },
-                            label = { Text("Type*") },
-                            modifier = Modifier.fillMaxWidth(),
-                            readOnly = true,
-                            trailingIcon = {
-                                IconButton(onClick = { typeExpanded = true }) {
-                                    Icon(Icons.Default.Edit, contentDescription = "Select Type")
+                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                            CharacterType.entries.forEach { type ->
+
+                                SegmentedButton(
+                                    selected = viewModel.state.type == type,
+                                    onClick = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredType(type)) },
+                                    shape = SegmentedButtonDefaults.itemShape(type.ordinal, CharacterType.entries.size)
+                                ) {
+                                    Text(
+                                        text = when (type) {
+                                            CharacterType.PLAYER_CHARACTER -> "PC"
+                                            CharacterType.NON_PLAYER_CHARACTER -> "NPC"
+                                            CharacterType.MONSTER -> "Monster"
+                                        },
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
-                            }
-                        )
-                        DropdownMenu(
-                            expanded = typeExpanded,
-                            onDismissRequest = { typeExpanded = false }
-                        ) {
-                            CharacterType.values().forEach { type ->
-                                DropdownMenuItem(
-                                    text = { Text(type.toString()) },
-                                    onClick = {
-                                        viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredType(type))
-                                        typeExpanded = false
-                                    }
-                                )
                             }
                         }
 
@@ -607,8 +602,9 @@ fun CharactersScreen() {
                         OutlinedTextField(
                             value = state.race,
                             onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredRace(it)) },
-                            label = { Text("Race*") },
-                            modifier = Modifier.fillMaxWidth()
+                            label = { Text("Race") },
+                            modifier = Modifier.fillMaxWidth(),
+                            isError = state.race.isEmpty()
                         )
 
                         // Class field

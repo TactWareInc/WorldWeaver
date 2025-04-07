@@ -30,6 +30,7 @@ class CharacterViewModel(
     private val getCharacterByIdUseCase: GetCharacterByIdUseCase,
     private val getCharactersByTypeUseCase: GetCharactersByTypeUseCase,
     private val deleteCharacterUseCase: DeleteCharacterUseCase,
+    private val campaignService: CampaignService,
 ) : ViewModel() {
 
     // UI State
@@ -39,6 +40,8 @@ class CharacterViewModel(
     // Expose characters from repository
     private val _characters = MutableStateFlow<List<Character>>(emptyList())
     val characters: StateFlow<List<Character>> = _characters.asStateFlow()
+
+    internal val activeCampaign = campaignService.activeCampaign
 
     // Initialize state and characters
     init {
