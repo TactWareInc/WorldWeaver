@@ -4,6 +4,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import net.tactware.worldweaver.util.IdGenerator
 import org.koin.core.annotation.Single
 
 /**
@@ -17,7 +18,7 @@ class EncounterService {
      * Data class representing a combat encounter
      */
     data class Encounter(
-        val id: String = Companion.generateId(),
+        val id: String = IdGenerator.generateEncounterId(),
         val name: String,
         val description: String,
         val location: String, // Location name or ID
@@ -34,7 +35,7 @@ class EncounterService {
      * Data class representing a participant in an encounter
      */
     data class EncounterParticipant(
-        val id: String = Companion.generateId(),
+        val id: String = IdGenerator.generateParticipantId(),
         val name: String,
         val type: ParticipantType,
         val initiative: Int = 0,
@@ -192,7 +193,7 @@ class EncounterService {
         notes: String = "",
         isActive: Boolean = false
     ): String {
-        val id = Companion.generateId()
+        val id = IdGenerator.generateEncounterId()
         _encounters.add(
             Encounter(
                 id = id,
@@ -322,12 +323,4 @@ class EncounterService {
         }
     }
 
-    companion object {
-        /**
-         * Generates a unique ID
-         */
-        internal fun generateId(): String {
-            return System.currentTimeMillis().toString()
-        }
-    }
 }

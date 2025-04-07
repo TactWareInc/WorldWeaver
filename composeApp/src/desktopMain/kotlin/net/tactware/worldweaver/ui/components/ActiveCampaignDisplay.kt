@@ -12,7 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import net.tactware.nimbus.appwide.ui.theme.spacing
-import net.tactware.worldweaver.dal.model.Campaign
+import net.tactware.worldweaver.dal.model.campaign.Campaign
 
 @Composable
 fun ActiveCampaignDisplay(campaign: Campaign?) {

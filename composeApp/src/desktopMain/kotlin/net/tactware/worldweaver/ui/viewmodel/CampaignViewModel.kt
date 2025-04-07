@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import net.tactware.worldweaver.bl.CampaignService
-import net.tactware.worldweaver.dal.model.Campaign
+import net.tactware.worldweaver.dal.model.campaign.Campaign
 import net.tactware.worldweaver.dal.model.GameMechanics
 import org.koin.core.annotation.Factory
 

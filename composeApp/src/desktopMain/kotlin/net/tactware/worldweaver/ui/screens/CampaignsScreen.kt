@@ -51,7 +51,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import net.tactware.nimbus.appwide.ui.theme.spacing
-import net.tactware.worldweaver.dal.model.Campaign
+import net.tactware.worldweaver.dal.model.campaign.Campaign
 import net.tactware.worldweaver.dal.model.GameMechanics
 import net.tactware.worldweaver.ui.components.ActiveCampaignDisplay
 import net.tactware.worldweaver.ui.viewmodel.CampaignScreenAction

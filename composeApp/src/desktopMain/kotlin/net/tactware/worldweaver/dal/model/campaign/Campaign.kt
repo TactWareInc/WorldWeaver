@@ -1,13 +1,15 @@
-package net.tactware.worldweaver.dal.model
+package net.tactware.worldweaver.dal.model.campaign
 
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import net.tactware.worldweaver.dal.model.GameMechanics
+import net.tactware.worldweaver.util.IdGenerator
 
 /**
  * Data class representing a campaign
  */
 data class Campaign(
-    val id: String = generateId(),
+    val id: String = IdGenerator.generateCampaignId(),
     val name: String,
     val description: String,
     val setting: String,
@@ -18,13 +20,4 @@ data class Campaign(
     val mechanics: GameMechanics = GameMechanics.FIFTH_EDITION, // Game mechanics system
     val createdAt: Instant = Clock.System.now(),
     val updatedAt: Instant = Clock.System.now()
-) {
-    companion object {
-        /**
-         * Generates a unique ID for a campaign
-         */
-        internal fun generateId(): String {
-            return System.currentTimeMillis().toString()
-        }
-    }
-}
+)

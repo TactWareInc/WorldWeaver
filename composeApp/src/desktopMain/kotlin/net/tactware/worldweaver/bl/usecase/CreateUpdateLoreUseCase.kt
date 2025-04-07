@@ -4,6 +4,7 @@ import kotlinx.datetime.Clock
 import net.tactware.worldweaver.bl.CampaignService
 import net.tactware.worldweaver.dal.model.lore.Lore
 import net.tactware.worldweaver.dal.repository.LoreRepository
+import net.tactware.worldweaver.util.IdGenerator
 import org.koin.core.annotation.Factory
 
 /**
@@ -34,7 +35,7 @@ class CreateUpdateLoreUseCase(
         tags: List<String> = emptyList(),
         relatedEntries: List<String> = emptyList()
     ): String {
-        val loreId = id ?: generateId()
+        val loreId = id ?: IdGenerator.generateLoreId()
         val now = Clock.System.now()
 
         // Get the current active campaign ID
@@ -73,10 +74,4 @@ class CreateUpdateLoreUseCase(
         return loreId
     }
 
-    /**
-     * Generates a unique ID for a lore entry
-     */
-    private fun generateId(): String {
-        return System.currentTimeMillis().toString()
-    }
 }

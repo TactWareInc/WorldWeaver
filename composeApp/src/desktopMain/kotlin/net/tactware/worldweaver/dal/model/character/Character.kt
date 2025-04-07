@@ -3,12 +3,13 @@ package net.tactware.worldweaver.dal.model.character
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlin.math.floor
+import net.tactware.worldweaver.util.IdGenerator
 
 /**
  * Data class representing a character
  */
 data class Character(
-    val id: String = generateId(),
+    val id: String = IdGenerator.generateCharacterId(),
     val name: String,
     val type: CharacterType,
     val race: String,
@@ -137,13 +138,6 @@ data class Character(
 
 
     companion object {
-        /**
-         * Generates a unique ID for a character
-         */
-        internal fun generateId(): String {
-            return System.currentTimeMillis().toString()
-        }
-
         /**
          * Calculates the proficiency bonus based on character level
          */

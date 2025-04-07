@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
-import net.tactware.worldweaver.dal.model.Campaign
+import net.tactware.worldweaver.dal.model.campaign.Campaign
 import net.tactware.worldweaver.dal.model.GameMechanics
 import net.tactware.worldweaver.dal.repository.CampaignRepository
 import org.koin.core.annotation.Single
