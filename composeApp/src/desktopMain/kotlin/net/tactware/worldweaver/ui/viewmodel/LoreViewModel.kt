@@ -76,6 +76,9 @@ class LoreViewModel(
             is LoreScreenAction.CancelEditing -> {
                 state = state.copy(editingEntryId = null)
             }
+            is LoreScreenAction.SelectEntry -> {
+                state = state.copy(selectedEntryId = action.entryId)
+            }
             is LoreScreenAction.CreateLoreEntry -> {
                 createUpdateLoreUseCase.execute(
                     title = action.title,
@@ -141,7 +144,8 @@ data class LoreScreenState(
     val selectedCategory: String = "All",
     val categories: List<String> = listOf("All"),
     val showNewEntryForm: Boolean = false,
-    val editingEntryId: String? = null
+    val editingEntryId: String? = null,
+    val selectedEntryId: String? = null
 )
 
 /**
@@ -172,6 +176,11 @@ sealed class LoreScreenAction {
      * Cancel editing a lore entry.
      */
     object CancelEditing : LoreScreenAction()
+
+    /**
+     * Select a lore entry to view its details.
+     */
+    data class SelectEntry(val entryId: String?) : LoreScreenAction()
 
     /**
      * Create a new lore entry.

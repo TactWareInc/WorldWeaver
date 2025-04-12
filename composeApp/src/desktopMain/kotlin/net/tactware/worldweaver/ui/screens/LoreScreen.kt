@@ -382,6 +382,7 @@ fun LoreScreen() {
     val selectedCategory = state.selectedCategory
     val showNewEntryForm = state.showNewEntryForm
     val editingEntryId = state.editingEntryId
+    val selectedEntryId = state.selectedEntryId
     val categories = state.categories
 
     // Get lore entries from the ViewModel
@@ -389,6 +390,16 @@ fun LoreScreen() {
 
     // Get entries for the selected category
     val filteredEntries = viewModel.getFilteredEntries()
+
+    // Get the selected entry
+    val selectedEntry = selectedEntryId?.let { id ->
+        loreEntries.find { it.id == id }
+    }
+
+    // If no entry is selected and there are entries available, select the first one
+    if (selectedEntryId == null && filteredEntries.isNotEmpty() && !showNewEntryForm && editingEntryId == null) {
+        viewModel.onInteraction(LoreScreenAction.SelectEntry(filteredEntries.first().id))
+    }
 
     // Functions for handling lore entry actions
     fun startEditingEntry(entry: Lore) {
@@ -429,7 +440,6 @@ fun LoreScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
             .padding(MaterialTheme.spacing.medium),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
     ) {
@@ -558,19 +568,46 @@ fun LoreScreen() {
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
         }
 
-        // Display lore entries for the selected category
+        // List-Detail View
         if (filteredEntries.isEmpty()) {
             Text("No lore entries found for this category.")
         } else {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-            ) {
-                filteredEntries.forEach { entry ->
-                    LoreEntryCard(
-                        entry = entry,
-                        onEdit = { viewModel.onInteraction(LoreScreenAction.StartEditingEntry(entry.id)) },
-                        onView = { /* View detail functionality could be added here */ }
-                    )
+            // Only show the list-detail view if we're not showing forms
+            AnimatedVisibility(visible = !showNewEntryForm && editingEntry == null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+                ) {
+                    // List view (left side)
+                    Column(
+                        modifier = Modifier
+                            .weight(0.4f)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                    ) {
+                        filteredEntries.forEach { entry ->
+                            LoreEntryCard(
+                                entry = entry,
+                                isSelected = entry.id == selectedEntryId,
+                                onEdit = { viewModel.onInteraction(LoreScreenAction.StartEditingEntry(entry.id)) },
+                                onView = { viewModel.onInteraction(LoreScreenAction.SelectEntry(entry.id)) }
+                            )
+                        }
+                    }
+
+                    // Detail view (right side)
+                    Column(
+                        modifier = Modifier.weight(0.6f)
+                    ) {
+                        selectedEntry?.let { entry ->
+                            LoreEntryDetail(
+                                entry = entry,
+                                onEdit = { viewModel.onInteraction(LoreScreenAction.StartEditingEntry(entry.id)) }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -583,6 +620,7 @@ private fun LoreEntryCard(
     entry: Lore,
     onEdit: () -> Unit = {},
     onView: () -> Unit = {},
+    isSelected: Boolean = false,
     viewModel: LoreViewModel = koinInject()
 ) {
     ElevatedCard(
@@ -591,7 +629,10 @@ private fun LoreEntryCard(
             .padding(vertical = MaterialTheme.spacing.small)
             .clickable { onView() },
         colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = if (isSelected) 
+                MaterialTheme.colorScheme.surfaceContainerHigh 
+            else 
+                MaterialTheme.colorScheme.surfaceContainerLow
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -678,47 +719,140 @@ private fun LoreEntryCard(
                     }
                 }
             }
+        }
+    }
+}
 
-            // Related entries display
-            if (entry.relatedEntries.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Start
+@Composable
+private fun LoreEntryDetail(
+    entry: Lore,
+    onEdit: () -> Unit = {},
+    viewModel: LoreViewModel = koinInject()
+) {
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(MaterialTheme.spacing.small),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.medium)
+                .verticalScroll(rememberScrollState())
+        ) {
+            // Header with title and buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    entry.title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // Edit button
+                IconButton(onClick = onEdit) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Lore Entry",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            // Category and creation date
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FilledTonalButton(
+                    onClick = {},
+                    enabled = false,
+                    modifier = Modifier.padding(end = MaterialTheme.spacing.small)
                 ) {
-                    Column {
-                        Text(
-                            "Related Lore:",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    Text(entry.category)
+                }
+
+                Text(
+                    "Created: ${entry.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                if (entry.updatedAt != entry.createdAt) {
+                    Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+                    Text(
+                        "Updated: ${entry.updatedAt.toLocalDateTime(TimeZone.currentSystemDefault()).date}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Tags
+            if (entry.tags.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                Text(
+                    "Tags",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                ) {
+                    entry.tags.forEach { tag ->
+                        SuggestionChip(
+                            onClick = { /* No action needed */ },
+                            label = { Text(tag) }
                         )
+                    }
+                }
+            }
 
-                        Spacer(modifier = Modifier.height(4.dp))
+            // Content
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+            Text(
+                "Content",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+            Text(
+                entry.content,
+                style = MaterialTheme.typography.bodyLarge
+            )
 
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            // Show up to 2 related entries in the card
-                            val displayCount = minOf(2, entry.relatedEntries.size)
-                            val displayEntries = entry.relatedEntries.take(displayCount)
-                            val remainingCount = entry.relatedEntries.size - displayCount
-
-                            displayEntries.forEach { relatedId ->
-                                val relatedEntry = viewModel.getLoreEntryById(relatedId)
-                                if (relatedEntry != null) {
-                                    SuggestionChip(
-                                        onClick = { /* View related entry */ },
-                                        label = { Text(relatedEntry.title) }
-                                    )
-                                }
-                            }
-
-                            if (remainingCount > 0) {
-                                SuggestionChip(
-                                    onClick = { /* View all related entries */ },
-                                    label = { Text("+$remainingCount more") }
-                                )
-                            }
+            // Related entries
+            if (entry.relatedEntries.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                Text(
+                    "Related Lore",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                ) {
+                    entry.relatedEntries.forEach { relatedId ->
+                        val relatedEntry = viewModel.getLoreEntryById(relatedId)
+                        if (relatedEntry != null) {
+                            SuggestionChip(
+                                onClick = { viewModel.onInteraction(LoreScreenAction.SelectEntry(relatedId)) },
+                                label = { Text(relatedEntry.title) }
+                            )
                         }
                     }
                 }

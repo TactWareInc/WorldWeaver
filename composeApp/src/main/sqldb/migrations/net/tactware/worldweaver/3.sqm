@@ -1,0 +1,35 @@
+-- Add Location table
+CREATE TABLE IF NOT EXISTS Location (
+    id TEXT PRIMARY KEY NOT NULL,
+    campaignId TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    language TEXT NOT NULL,
+    dialect TEXT NOT NULL,
+    climate TEXT NOT NULL,
+    terrain TEXT NOT NULL,
+    population TEXT NOT NULL, -- Could be a number or a description like "sparse", "dense", etc.
+    government TEXT NOT NULL,
+    economy TEXT NOT NULL,
+    religion TEXT NOT NULL,
+    landmarks TEXT NOT NULL, -- Stored as JSON array
+    history TEXT NOT NULL,
+    notes TEXT NOT NULL,
+    hasPartyMembers INTEGER NOT NULL DEFAULT 0, -- Boolean (0 = false, 1 = true)
+    createdAt TEXT NOT NULL, -- ISO-8601 format
+    updatedAt TEXT NOT NULL, -- ISO-8601 format
+    FOREIGN KEY (campaignId) REFERENCES Campaign(id)
+);
+
+-- Create FTS table for Location
+CREATE VIRTUAL TABLE IF NOT EXISTS LocationFts USING fts4(
+    name TEXT,
+    description TEXT,
+    language TEXT,
+    dialect TEXT,
+    climate TEXT,
+    terrain TEXT,
+    notes TEXT,
+    content='Location',
+    tokenize = 'unicode61'
+);
