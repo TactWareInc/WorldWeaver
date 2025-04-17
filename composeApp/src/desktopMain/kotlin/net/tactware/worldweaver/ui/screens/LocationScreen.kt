@@ -345,8 +345,6 @@ fun LocationScreen() {
             )
         }
 
-        // Display active campaign info
-        ActiveCampaignDisplay(campaignService.activeCampaign)
 
         Divider()
 

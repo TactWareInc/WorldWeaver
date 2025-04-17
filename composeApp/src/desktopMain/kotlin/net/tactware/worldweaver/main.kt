@@ -49,6 +49,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import kotlinx.coroutines.delay
 import net.tactware.nimbus.appwide.ui.theme.spacing
+import net.tactware.worldweaver.bl.CampaignService
 import net.tactware.worldweaver.ui.NotificationIcon
 import net.tactware.worldweaver.ui.navigation.NavItem
 import net.tactware.worldweaver.ui.scaffold.components.DesktopApplicationScaffold
@@ -79,8 +80,9 @@ fun main() = application {
             onCloseRequest = ::exitApplication,
             title = "WorldWeaver",
         ) {
-            // Inject the MainViewModel
+            // Inject the MainViewModel and CampaignService
             val viewModel = koinInject<MainViewModel>()
+            val campaignService = koinInject<CampaignService>()
             val state = viewModel.state
 
             // Use state from the ViewModel
@@ -88,6 +90,9 @@ fun main() = application {
             val causeNavigationToExpand = state.causeNavigationToExpand
             val showNavItemTitles = state.showNavItemTitles
             val expandColumn = state.expandColumn
+
+            // Get the active campaign
+            val activeCampaign = campaignService.activeCampaign
 
             // Create a NavigationPanelState to manage the navigation panel expansion
             val navigationPanelState = rememberNavigationPanelState(initialExpanded = causeNavigationToExpand)
@@ -149,6 +154,7 @@ fun main() = application {
                 // Top bar with title, search, and user profile
                 topBar = {
                     DesktopTopBar(
+                        activeCampaign = activeCampaign,
                         title = {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
@@ -316,7 +322,7 @@ fun main() = application {
                         modifier = Modifier.fillMaxSize()
                     ) {
                         Box(
-                            modifier = Modifier.fillMaxSize().padding(MaterialTheme.spacing.medium)
+                            modifier = Modifier.fillMaxSize()
                         ) {
                             when (selectedNavItem) {
                                 0 -> { // Dashboard

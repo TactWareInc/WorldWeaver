@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import net.tactware.worldweaver.dal.model.campaign.Campaign
+import net.tactware.worldweaver.ui.components.ActiveCampaignDisplay
 
 /**
  * Custom implementation of the top bar optimized for desktop applications.
@@ -22,6 +24,7 @@ import androidx.compose.ui.unit.dp
  * search functionality and global actions.
  *
  * @param title Title or branding element
+ * @param activeCampaign The currently active campaign, if any
  * @param search Search component
  * @param actions Actions on the right side
  * @param backgroundColor Background color of the top bar
@@ -33,6 +36,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun DesktopTopBar(
     title: @Composable () -> Unit = {},
+    activeCampaign: Campaign? = null,
     search: @Composable RowScope.() -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     backgroundColor: Color = MaterialTheme.colorScheme.surface,
@@ -54,10 +58,21 @@ fun DesktopTopBar(
             // Title/branding section
             title()
 
-            // Search section (centered)
+            // Active campaign section (if available)
+            if (activeCampaign != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    ActiveCampaignDisplay(activeCampaign)
+                }
+            }
+
+            // Search section (right-aligned)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(if (activeCampaign != null) 0.5f else 1f),
                 horizontalArrangement = Arrangement.End,
                 content = { search() }
             )

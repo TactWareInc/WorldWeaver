@@ -474,9 +474,6 @@ fun CharactersScreen() {
             )
 
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-
-            // Display active campaign at the top
-            ActiveCampaignDisplay(activeCampaign)
         }
 
         Divider(modifier = Modifier.fillMaxWidth())

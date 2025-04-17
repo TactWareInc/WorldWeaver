@@ -456,8 +456,6 @@ fun LoreScreen() {
             )
         }
 
-        // Display active campaign info
-        ActiveCampaignDisplay(campaignService.activeCampaign)
 
         Divider()
 

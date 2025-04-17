@@ -28,18 +28,18 @@ fun ActiveCampaignDisplay(campaign: Campaign?) {
             ) {
                 Text(
                     "Active Campaign: ",
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleSmall
                 )
                 Text(
                     activeCampaign.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
         }
     } ?: Text(
         "No active campaign selected. Please select a campaign first.",
-        style = MaterialTheme.typography.bodyLarge,
+        style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.error
     )
 }
