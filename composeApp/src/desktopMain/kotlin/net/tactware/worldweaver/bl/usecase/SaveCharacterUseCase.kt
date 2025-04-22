@@ -61,7 +61,7 @@ class SaveCharacterUseCase(
             ?: throw IllegalStateException("No active campaign found. Please select a campaign first.")
 
         // Check if the character exists
-        val existingCharacter = characterRepository.getCharacterById(characterId).first()
+        val existingCharacter = characterRepository.getCharacterById(characterId)
 
         if (existingCharacter != null) {
             // Update existing character

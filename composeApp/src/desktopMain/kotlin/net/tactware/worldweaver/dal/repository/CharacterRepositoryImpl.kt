@@ -1,7 +1,17 @@
 package net.tactware.worldweaver.dal.repository
 
+import app.cash.sqldelight.coroutines.asFlow
+import app.cash.sqldelight.coroutines.mapToList
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import net.tactware.worldweaver.dal.model.character.Character
@@ -23,6 +33,18 @@ class CharacterRepositoryImpl(
     private val databaseProvider: DatabaseProvider
 ) : CharacterRepository {
 
+    // StateFlow of all characters, initialized as empty and updated when accessed
+    private val charactersFlow = databaseProvider.getDatabase().characterQueries.getAllCharacters().asFlow().mapToList(
+        Dispatchers.IO).map {
+            it.map { dbCharacter ->
+                mapDbCharacterToDomain(dbCharacter)
+            }
+        }.stateIn(CoroutineScope(Dispatchers.IO), SharingStarted.WhileSubscribed(), emptyList())
+
+    override fun getCharactersFlow(): Flow<List<Character>> {
+        return charactersFlow
+    }
+
     override fun getAllCharacters(): List<Character> {
         return try {
             val db = databaseProvider.getDatabase()
@@ -35,18 +57,9 @@ class CharacterRepositoryImpl(
         }
     }
 
-    override fun getCharacterById(id: String): Flow<Character?> {
-        return flow {
-            try {
-                val db = databaseProvider.getDatabase()
-                val character = db.characterQueries.getCharacterById(id).executeAsOneOrNull()?.let {
-                    mapDbCharacterToDomain(it)
-                }
-                emit(character)
-            } catch (e: Exception) {
-                println("Error getting character by ID: ${e.message}")
-                emit(null)
-            }
+    override fun getCharacterById(id: String): Character? {
+        return databaseProvider.getDatabase().characterQueries.getCharacterById(id).executeAsOneOrNull()?.let {
+            mapDbCharacterToDomain(it)
         }
     }
 
@@ -155,6 +168,7 @@ class CharacterRepositoryImpl(
                 updatedAt = updatedAt.toString(),
                 id = id
             )
+
         } catch (e: Exception) {
             println("Error updating character: ${e.message}")
         }
@@ -164,6 +178,7 @@ class CharacterRepositoryImpl(
         try {
             val db = databaseProvider.getDatabase()
             db.characterQueries.deleteCharacter(id)
+
         } catch (e: Exception) {
             println("Error deleting character: ${e.message}")
         }

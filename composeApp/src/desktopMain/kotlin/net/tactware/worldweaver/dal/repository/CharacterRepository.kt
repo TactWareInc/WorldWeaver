@@ -20,9 +20,14 @@ interface CharacterRepository {
     fun getAllCharacters(): List<Character>
 
     /**
+     * Get a flow of all characters ordered by updated date (descending)
+     */
+    fun getCharactersFlow(): Flow<List<Character>>
+
+    /**
      * Get a character by ID as a Flow
      */
-    fun getCharacterById(id: String): Flow<Character?>
+    fun getCharacterById(id: String): Character?
 
     /**
      * Insert a new character

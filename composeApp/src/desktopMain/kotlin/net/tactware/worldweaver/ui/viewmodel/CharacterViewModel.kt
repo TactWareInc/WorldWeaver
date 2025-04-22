@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import net.tactware.worldweaver.bl.CampaignService
 import net.tactware.worldweaver.bl.usecase.*
 import net.tactware.worldweaver.dal.model.character.Character
@@ -45,11 +47,24 @@ class CharacterViewModel(
 
     // Initialize state and characters
     init {
-        refreshCharacters()
+        collectCharactersFlow()
+    }
+
+    /**
+     * Collects the flow of characters from the use case
+     */
+    private fun collectCharactersFlow() {
+        // Use the flow-based approach to get characters
+        viewModelScope.launch {
+            getCharactersUseCase.executeFlow().collect { characters ->
+                _characters.value = characters
+            }
+        }
     }
 
     /**
      * Refreshes the characters list from the repository
+     * This is kept for backward compatibility
      */
     private fun refreshCharacters() {
         _characters.value = getCharactersUseCase.execute()
@@ -128,7 +143,7 @@ class CharacterViewModel(
                 if (state.selectedCharacterId == interaction.characterId) {
                     state = state.copy(selectedCharacterId = null)
                 }
-                refreshCharacters()
+                // No need to call refreshCharacters() as we're using a Flow now
             }
             // Handle individual field entries
             is CharacterInteraction.DataEntry.EnteredName -> {
@@ -213,7 +228,7 @@ class CharacterViewModel(
             is CharacterInteraction.DataEntry.SubmitCreate -> {
                 if (state.isCreateValid()) {
                     // Use saveCharacterUseCase for creating a new character
-                    kotlinx.coroutines.runBlocking {
+                    viewModelScope.launch {
                         saveCharacterUseCase.execute(
                             id = null, // No ID for new character, will be generated
                             name = state.name,
@@ -246,7 +261,7 @@ class CharacterViewModel(
                         description = "",
                         notes = ""
                     )
-                    refreshCharacters()
+                    // No need to call refreshCharacters() as we're using a Flow now
                 }
             }
             is CharacterInteraction.DataEntry.SubmitUpdate -> {
@@ -285,7 +300,7 @@ class CharacterViewModel(
                         description = "",
                         notes = ""
                     )
-                    refreshCharacters()
+                    // No need to call refreshCharacters() as we're using a Flow now
                 }
             }
         }
@@ -309,19 +324,8 @@ class CharacterViewModel(
      * @param id The ID of the character to retrieve
      * @return A Flow emitting the character with the specified ID, or null if not found
      */
-    fun getCharacterById(id: String): Flow<Character?> {
-        return getCharacterByIdUseCase.execute(id)
-    }
-
-    /**
-     * Gets the selected character as a Flow
-     * 
-     * @return A Flow emitting the selected character, or null if no character is selected
-     */
-    fun getSelectedCharacter(): Flow<Character?> {
-        return state.selectedCharacterId?.let { id ->
-            getCharacterByIdUseCase.execute(id)
-        } ?: flowOf(null)
+    fun getCharacterById(id: String): Character? {
+        return getCharacterByIdUseCase.invoke(id)
     }
 }
 

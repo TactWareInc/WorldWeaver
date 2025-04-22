@@ -18,7 +18,7 @@ class GetCharacterByIdUseCase(private val characterRepository: CharacterReposito
      * @param id The ID of the character to retrieve
      * @return A Flow emitting the character with the specified ID, or null if not found
      */
-    fun execute(id: String): Flow<Character?> {
+    operator fun invoke(id: String): Character? {
         return characterRepository.getCharacterById(id)
     }
 }

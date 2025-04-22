@@ -24,7 +24,9 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -32,11 +34,13 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -62,6 +66,10 @@ import net.tactware.worldweaver.ui.components.ActiveCampaignDisplay
 import net.tactware.worldweaver.ui.viewmodel.CharacterInteraction
 import net.tactware.worldweaver.ui.viewmodel.CharacterViewModel
 import net.tactware.worldweaver.bl.CampaignService
+import net.tactware.worldweaver.ui.scaffold.components.DesktopAreaScaffold
+import net.tactware.worldweaver.ui.scaffold.components.DesktopActionBar
+import net.tactware.worldweaver.ui.scaffold.components.DesktopPanel
+import net.tactware.worldweaver.ui.scaffold.state.rememberNavigationPanelState
 import androidx.compose.runtime.collectAsState
 import org.koin.compose.koinInject
 
@@ -194,6 +202,52 @@ private fun CharacterItem(
 }
 
 @Composable
+private fun NavigationPanelCharacterItem(
+    character: Character,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp, horizontal = 8.dp),
+        color = when {
+            isSelected -> MaterialTheme.colorScheme.secondaryContainer
+            else -> MaterialTheme.colorScheme.surface
+        },
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Character name with type indicator
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    character.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    when(character.type) {
+                        CharacterType.PLAYER_CHARACTER -> "PC - ${character.race} ${character.characterClass}"
+                        CharacterType.NON_PLAYER_CHARACTER -> "NPC - ${character.race}"
+                        CharacterType.MONSTER -> "Monster - ${character.race}"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun CharacterDetail(
     character: Character?,
     onEdit: (String) -> Unit
@@ -241,7 +295,7 @@ private fun CharacterDetail(
                 }
             }
 
-            Divider()
+            HorizontalDivider()
 
             // Basic info section
             Text(
@@ -418,7 +472,7 @@ fun CharactersScreen() {
     val selectedCharacterId = state.selectedCharacterId
 
     // Get characters from the ViewModel
-    val characters = viewModel.getFilteredCharacters()
+    val characters = viewModel.characters.collectAsState().value
 
     // Get active campaign
     val activeCampaign = viewModel.activeCampaign
@@ -426,302 +480,379 @@ fun CharactersScreen() {
     // Get selected character
     val selectedCharacter = characters.find { it.id == selectedCharacterId }
 
-    // Function to handle character selection
-    fun selectCharacter(id: String?) {
-        viewModel.onInteraction(CharacterInteraction.SelectCharacter(id))
-    }
 
-    // Function to start editing a character
-    fun startEditingCharacter(id: String) {
-        viewModel.onInteraction(CharacterInteraction.StartEditingCharacter(id))
-    }
+    // State for scrolling
+    val scrollState = rememberScrollState()
+    val navigationPanelState = rememberNavigationPanelState(true)
 
-    // Function to delete a character
-    fun deleteCharacter(id: String) {
-        viewModel.onInteraction(CharacterInteraction.DeleteCharacter(id))
-    }
+    DesktopAreaScaffold(
+        navigationPanelState = navigationPanelState,
+        actionBar = {
+            DesktopActionBar(
+                expansionAction = {
+                    IconButton(onClick = { navigationPanelState.toggle() }) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = "Toggle Navigation Panel"
+                        )
+                    }
+                },
+                primaryAction = {
+                    Button(
+                        onClick = { viewModel.onInteraction(CharacterInteraction.ShowNewCharacterForm) },
+                        shape = RoundedCornerShape(16.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        enabled = !showNewCharacterForm && !showEditForm
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Create New Character",
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text("New Character")
+                    }
+                },
+                actions = {
+                    // Only show these actions when a character is selected
+                    if (selectedCharacter != null) {
+                        // Edit button as IconButton
+                        IconButton(
+                            onClick = { viewModel.onInteraction(CharacterInteraction.StartEditingCharacter(selectedCharacter.id)) },
+                            enabled = !showNewCharacterForm && !showEditForm
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit Character"
+                            )
+                        }
 
-    // Function to show the new character form
-    fun showNewCharacterForm() {
-        viewModel.onInteraction(CharacterInteraction.ShowNewCharacterForm)
-    }
-
-    // Function to hide the new character form
-    fun hideNewCharacterForm() {
-        viewModel.onInteraction(CharacterInteraction.HideNewCharacterForm)
-    }
-
-    // Function to cancel editing
-    fun cancelEditing() {
-        viewModel.onInteraction(CharacterInteraction.CancelEditing)
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(MaterialTheme.spacing.medium),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-    ) {
-        // Header section
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                "Characters",
-                style = MaterialTheme.typography.headlineMedium
-            )
-            Text(
-                "Manage your characters for the campaign.",
-                style = MaterialTheme.typography.bodyLarge
-            )
-
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-        }
-
-        Divider(modifier = Modifier.fillMaxWidth())
-
-        // Character actions row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Your Characters",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            // New Character Button
-            if (showNewCharacterForm) {
-                OutlinedButton(
-                    onClick = { hideNewCharacterForm() }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Cancel",
-                        modifier = Modifier.padding(end = MaterialTheme.spacing.small)
-                    )
-                    Text("Cancel")
+                        // Delete button as IconButton
+                        IconButton(
+                            onClick = { viewModel.onInteraction(CharacterInteraction.DeleteCharacter(selectedCharacter.id)) },
+                            enabled = !showNewCharacterForm && !showEditForm
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete Character",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 }
-            } else {
-                Button(
-                    onClick = { showNewCharacterForm() }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Create New Character",
-                        modifier = Modifier.padding(end = MaterialTheme.spacing.small)
+            )
+        },
+        navigationPanel = {
+            DesktopPanel(
+                header = {
+                    Text(
+                        "Characters",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
-                    Text("Create New Character")
+                },
+                content = {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(characters) { character ->
+                            val isSelected = selectedCharacterId == character.id
+                            NavigationPanelCharacterItem(
+                                character = character,
+                                isSelected = isSelected,
+                                onClick = {
+                                    viewModel.onInteraction(CharacterInteraction.SelectCharacter(character.id))
+                                    // Close any open forms
+                                    if (showNewCharacterForm) {
+                                        viewModel.onInteraction(CharacterInteraction.HideNewCharacterForm)
+                                    }
+                                    if (showEditForm) {
+                                        viewModel.onInteraction(CharacterInteraction.CancelEditing)
+                                    }
+                                }
+                            )
+                        }
+                    }
                 }
-            }
-        }
-
-        // Main content area with list and detail
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-        ) {
-            // Character list
-            LazyColumn(
+            )
+        },
+        content = {
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(MaterialTheme.spacing.medium),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
             ) {
-                items(characters) { character ->
-                    CharacterItem(
-                        character = character,
-                        isSelected = character.id == selectedCharacterId,
-                        onSelect = { selectCharacter(character.id) },
-                        onEdit = { startEditingCharacter(character.id) },
-                        onDelete = { deleteCharacter(character.id) }
+                // Header section with selected character
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        if (selectedCharacter != null) "Character: ${selectedCharacter.name}" else "Characters",
+                        style = MaterialTheme.typography.headlineMedium
                     )
-                }
-            }
 
-            // Character detail or form
-            Card(
-                modifier = Modifier
-                    .weight(2f)
-                    .fillMaxHeight(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                )
-            ) {
-                if (showNewCharacterForm) {
-                    // New Character Form
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(MaterialTheme.spacing.medium)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                    if (selectedCharacter != null) {
+                        Text(
+                            when(selectedCharacter.type) {
+                                CharacterType.PLAYER_CHARACTER -> "Player Character - ${selectedCharacter.race} ${selectedCharacter.characterClass}"
+                                CharacterType.NON_PLAYER_CHARACTER -> "NPC - ${selectedCharacter.race}"
+                                CharacterType.MONSTER -> "Monster - ${selectedCharacter.race}"
+                            },
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    } else {
+                        Text(
+                            "Select a character from the navigation panel or create a new one.",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+                }
+
+                HorizontalDivider(modifier = Modifier.fillMaxWidth())
+
+                // Form actions row - only show when form is visible
+                if (showNewCharacterForm || showEditForm) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Create New Character",
-                            style = MaterialTheme.typography.headlineSmall
+                            if (showEditForm) "Edit Character" else "Create New Character",
+                            style = MaterialTheme.typography.titleMedium
                         )
 
-                        Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+                        // Cancel button
+                        OutlinedButton(
+                            onClick = {
+                                if (showEditForm) {
+                                    viewModel.onInteraction(CharacterInteraction.CancelEditing)
+                                } else {
+                                    viewModel.onInteraction(CharacterInteraction.HideNewCharacterForm)
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Cancel",
+                                modifier = Modifier.padding(end = MaterialTheme.spacing.small)
+                            )
+                            Text("Cancel")
+                        }
+                    }
+                } else if (selectedCharacter != null) {
+                    // Show character details when a character is selected and no form is visible
+                    Text(
+                        "Character Details",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
 
-                        // Name field
-                        OutlinedTextField(
-                            value = state.name,
-                            onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredName(it)) },
-                            label = { Text("Name") },
-                            modifier = Modifier.fillMaxWidth(),
-                            isError = state.name.isEmpty()
-                        )
+                // Character Form or Details
+                if (showNewCharacterForm) {
+                    // New Character Form
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = MaterialTheme.spacing.small),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.medium),
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+                        ) {
+                            // Form fields
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+                            ) {
+                                // Name field
+                                OutlinedTextField(
+                                    value = state.name,
+                                    onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredName(it)) },
+                                    label = { Text("Name") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    isError = state.name.isEmpty()
+                                )
 
-                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                            CharacterType.entries.forEach { type ->
+                                // Type selection
+                                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                    CharacterType.entries.forEach { type ->
+                                        SegmentedButton(
+                                            selected = viewModel.state.type == type,
+                                            onClick = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredType(type)) },
+                                            shape = SegmentedButtonDefaults.itemShape(type.ordinal, CharacterType.entries.size)
+                                        ) {
+                                            Text(
+                                                text = when (type) {
+                                                    CharacterType.PLAYER_CHARACTER -> "PC"
+                                                    CharacterType.NON_PLAYER_CHARACTER -> "NPC"
+                                                    CharacterType.MONSTER -> "Monster"
+                                                },
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
 
-                                SegmentedButton(
-                                    selected = viewModel.state.type == type,
-                                    onClick = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredType(type)) },
-                                    shape = SegmentedButtonDefaults.itemShape(type.ordinal, CharacterType.entries.size)
+                                // Race field
+                                OutlinedTextField(
+                                    value = state.race,
+                                    onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredRace(it)) },
+                                    label = { Text("Race") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    isError = state.race.isEmpty()
+                                )
+
+                                // Class field
+                                OutlinedTextField(
+                                    value = state.characterClass,
+                                    onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredClass(it)) },
+                                    label = { Text("Class") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // Subclass field
+                                OutlinedTextField(
+                                    value = state.subclass,
+                                    onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredSubclass(it)) },
+                                    label = { Text("Subclass") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // Level field
+                                OutlinedTextField(
+                                    value = state.level?.toString() ?: "",
+                                    onValueChange = { 
+                                        val level = it.toIntOrNull()
+                                        viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredLevel(level))
+                                    },
+                                    label = { Text("Level") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // Hit Points field
+                                OutlinedTextField(
+                                    value = state.hitPoints?.toString() ?: "",
+                                    onValueChange = { 
+                                        val hp = it.toIntOrNull()
+                                        viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredHitPoints(hp))
+                                    },
+                                    label = { Text("Hit Points") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // Max Hit Points field
+                                OutlinedTextField(
+                                    value = state.maxHitPoints?.toString() ?: "",
+                                    onValueChange = { 
+                                        val maxHp = it.toIntOrNull()
+                                        viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredMaxHitPoints(maxHp))
+                                    },
+                                    label = { Text("Max Hit Points") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // Armor Class field
+                                OutlinedTextField(
+                                    value = state.armorClass?.toString() ?: "",
+                                    onValueChange = { 
+                                        val ac = it.toIntOrNull()
+                                        viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredArmorClass(ac))
+                                    },
+                                    label = { Text("Armor Class") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // Description field
+                                OutlinedTextField(
+                                    value = state.description,
+                                    onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredDescription(it)) },
+                                    label = { Text("Description") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    minLines = 3
+                                )
+
+                                // Notes field
+                                OutlinedTextField(
+                                    value = state.notes,
+                                    onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredNotes(it)) },
+                                    label = { Text("Notes") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    minLines = 3
+                                )
+                            }
+
+                            // Action Buttons
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("* Required fields", style = MaterialTheme.typography.bodySmall)
+
+                                Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+
+                                OutlinedButton(
+                                    onClick = { viewModel.onInteraction(CharacterInteraction.HideNewCharacterForm) }
                                 ) {
-                                    Text(
-                                        text = when (type) {
-                                            CharacterType.PLAYER_CHARACTER -> "PC"
-                                            CharacterType.NON_PLAYER_CHARACTER -> "NPC"
-                                            CharacterType.MONSTER -> "Monster"
-                                        },
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                    Text("Cancel")
+                                }
+
+                                Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+
+                                Button(
+                                    onClick = { viewModel.onInteraction(CharacterInteraction.DataEntry.SubmitCreate) },
+                                    enabled = state.isFormValid
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Save",
+                                        modifier = Modifier.padding(end = MaterialTheme.spacing.small)
                                     )
+                                    Text("Create Character")
                                 }
                             }
                         }
-
-                        // Race field
-                        OutlinedTextField(
-                            value = state.race,
-                            onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredRace(it)) },
-                            label = { Text("Race") },
-                            modifier = Modifier.fillMaxWidth(),
-                            isError = state.race.isEmpty()
-                        )
-
-                        // Class field
-                        OutlinedTextField(
-                            value = state.characterClass,
-                            onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredClass(it)) },
-                            label = { Text("Class") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        // Subclass field
-                        OutlinedTextField(
-                            value = state.subclass,
-                            onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredSubclass(it)) },
-                            label = { Text("Subclass") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        // Level field
-                        OutlinedTextField(
-                            value = state.level?.toString() ?: "",
-                            onValueChange = { 
-                                val level = it.toIntOrNull()
-                                viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredLevel(level))
-                            },
-                            label = { Text("Level") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        // Hit Points field
-                        OutlinedTextField(
-                            value = state.hitPoints?.toString() ?: "",
-                            onValueChange = { 
-                                val hp = it.toIntOrNull()
-                                viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredHitPoints(hp))
-                            },
-                            label = { Text("Hit Points") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        // Max Hit Points field
-                        OutlinedTextField(
-                            value = state.maxHitPoints?.toString() ?: "",
-                            onValueChange = { 
-                                val maxHp = it.toIntOrNull()
-                                viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredMaxHitPoints(maxHp))
-                            },
-                            label = { Text("Max Hit Points") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        // Armor Class field
-                        OutlinedTextField(
-                            value = state.armorClass?.toString() ?: "",
-                            onValueChange = { 
-                                val ac = it.toIntOrNull()
-                                viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredArmorClass(ac))
-                            },
-                            label = { Text("Armor Class") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        // Description field
-                        OutlinedTextField(
-                            value = state.description,
-                            onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredDescription(it)) },
-                            label = { Text("Description") },
-                            modifier = Modifier.fillMaxWidth(),
-                            minLines = 3
-                        )
-
-                        // Notes field
-                        OutlinedTextField(
-                            value = state.notes,
-                            onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredNotes(it)) },
-                            label = { Text("Notes") },
-                            modifier = Modifier.fillMaxWidth(),
-                            minLines = 3
-                        )
-
-                        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-
-                        // Form actions
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("* Required fields", style = MaterialTheme.typography.bodySmall)
-
-                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
-
-                            OutlinedButton(
-                                onClick = { hideNewCharacterForm() }
-                            ) {
-                                Text("Cancel")
-                            }
-
-                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
-
-                            Button(
-                                onClick = { viewModel.onInteraction(CharacterInteraction.DataEntry.SubmitCreate) },
-                                enabled = state.isFormValid
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Save",
-                                    modifier = Modifier.padding(end = MaterialTheme.spacing.small)
-                                )
-                                Text("Create Character")
-                            }
-                        }
                     }
-                } else {
-                    CharacterDetail(
-                        character = selectedCharacter,
-                        onEdit = { startEditingCharacter(it) }
-                    )
+                } else if (selectedCharacter != null && !showEditForm) {
+                    // Display character details in a card
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = MaterialTheme.spacing.small),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        CharacterDetail(
+                            character = selectedCharacter,
+                            onEdit = { id -> viewModel.onInteraction(CharacterInteraction.StartEditingCharacter(id)) }
+                        )
+                    }
+                } else if (!showNewCharacterForm && !showEditForm && selectedCharacter == null) {
+                    // Show a message when no character is selected
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "Select a character from the navigation panel or create a new one.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
-    }
+    )
 }
