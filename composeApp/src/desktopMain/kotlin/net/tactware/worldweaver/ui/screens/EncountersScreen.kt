@@ -32,8 +32,6 @@ fun EncountersScreen() {
             style = MaterialTheme.typography.headlineMedium
         )
 
-        // Display active campaign info
-        ActiveCampaignDisplay(campaignService.activeCampaign)
 
         // Encounters content will be added in a separate edit
         Text("Encounters content coming soon...")

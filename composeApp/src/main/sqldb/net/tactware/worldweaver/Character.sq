@@ -1,0 +1,93 @@
+
+-- Queries
+getAllCharacters:
+SELECT * FROM Character ORDER BY updatedAt DESC;
+
+getCharacterById:
+SELECT * FROM Character WHERE id = ?;
+
+-- FTS-based search
+searchCharacters:
+SELECT Character.*
+FROM CharacterFts
+JOIN Character ON Character.id = CharacterFts.rowid
+WHERE CharacterFts MATCH ?
+ORDER BY updatedAt DESC;
+
+-- Legacy LIKE-based search (fallback)
+searchCharactersLike:
+WITH search_query AS (
+    SELECT '%' || ? || '%' AS query
+)
+SELECT Character.*
+FROM CharacterFts
+JOIN Character ON Character.id = CharacterFts.rowid
+WHERE CharacterFts.name LIKE (SELECT query FROM search_query)
+   OR CharacterFts.race LIKE (SELECT query FROM search_query)
+   OR CharacterFts.characterClass LIKE (SELECT query FROM search_query)
+   OR CharacterFts.description LIKE (SELECT query FROM search_query)
+   OR CharacterFts.notes LIKE (SELECT query FROM search_query);
+
+-- Get characters by type
+getCharactersByType:
+SELECT * FROM Character WHERE type = ? ORDER BY updatedAt DESC;
+
+-- Get characters by campaign ID
+getCharactersByCampaignId:
+SELECT * FROM Character WHERE campaignId = ? ORDER BY updatedAt DESC;
+
+insertCharacter:
+INSERT INTO Character(
+    id, campaignId, name, type, race, characterClass, subclass, level, experiencePoints,
+    abilityScores, hitPoints, maxHitPoints, temporaryHitPoints, armorClass,
+    background, alignment, description, notes, items, currency, features,
+    createdAt, updatedAt
+)
+VALUES (
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+);
+
+updateCharacter:
+UPDATE Character
+SET name = ?,
+    type = ?,
+    race = ?,
+    characterClass = ?,
+    subclass = ?,
+    level = ?,
+    experiencePoints = ?,
+    abilityScores = ?,
+    hitPoints = ?,
+    maxHitPoints = ?,
+    temporaryHitPoints = ?,
+    armorClass = ?,
+    background = ?,
+    alignment = ?,
+    description = ?,
+    notes = ?,
+    items = ?,
+    currency = ?,
+    features = ?,
+    updatedAt = ?
+WHERE id = ?;
+
+deleteCharacter:
+DELETE FROM Character WHERE id = ?;
+
+-- Create triggers for Character FTS table
+CREATE TRIGGER character_ai AFTER INSERT ON Character BEGIN
+    INSERT INTO CharacterFts(rowid, name, race, characterClass, description, notes)
+    VALUES (new.id, new.name, new.race, new.characterClass, new.description, new.notes);
+END;
+
+CREATE TRIGGER character_ad AFTER DELETE ON Character BEGIN
+    INSERT INTO CharacterFts(CharacterFts, rowid, name, race, characterClass, description, notes)
+    VALUES ('delete', old.id, old.name, old.race, old.characterClass, old.description, old.notes);
+END;
+
+CREATE TRIGGER character_au AFTER UPDATE ON Character BEGIN
+    INSERT INTO CharacterFts(CharacterFts, rowid, name, race, characterClass, description, notes)
+    VALUES ('delete', old.id, old.name, old.race, old.characterClass, old.description, old.notes);
+    INSERT INTO CharacterFts(rowid, name, race, characterClass, description, notes)
+    VALUES (new.id, new.name, new.race, new.characterClass, new.description, new.notes);
+END;

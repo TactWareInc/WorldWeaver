@@ -4,6 +4,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import net.tactware.worldweaver.util.IdGenerator
 import org.koin.core.annotation.Single
 
 /**
@@ -31,7 +32,7 @@ class LocationService {
      * Data class representing a location
      */
     data class Location(
-        val id: String = Companion.generateId(),
+        val id: String = IdGenerator.generateLocationId(),
         val name: String,
         val type: LocationType,
         val description: String,
@@ -115,7 +116,7 @@ class LocationService {
         mapCoordinates: Pair<Float, Float>? = null,
         notes: String = ""
     ): String {
-        val id = Companion.generateId()
+        val id = IdGenerator.generateLocationId()
         _locations.add(
             Location(
                 id = id,
@@ -209,12 +210,4 @@ class LocationService {
         }
     }
 
-    companion object {
-        /**
-         * Generates a unique ID for a location
-         */
-        internal fun generateId(): String {
-            return System.currentTimeMillis().toString()
-        }
-    }
 }

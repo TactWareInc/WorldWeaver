@@ -1,7 +1,8 @@
 package net.tactware.worldweaver.dal.repository
 
 import kotlinx.datetime.Instant
-import net.tactware.worldweaver.dal.model.Campaign
+import net.tactware.worldweaver.dal.model.campaign.Campaign
+import net.tactware.worldweaver.dal.model.GameMechanics
 
 /**
  * Repository interface for Campaign data access.
@@ -30,6 +31,7 @@ interface CampaignRepository {
         activeQuests: List<String>,
         completedQuests: List<String>,
         notes: String,
+        mechanics: GameMechanics,
         createdAt: Instant,
         updatedAt: Instant
     )
@@ -46,6 +48,7 @@ interface CampaignRepository {
         activeQuests: List<String>,
         completedQuests: List<String>,
         notes: String,
+        mechanics: GameMechanics,
         updatedAt: Instant
     )
 

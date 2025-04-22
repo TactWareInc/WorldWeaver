@@ -1,0 +1,79 @@
+
+-- Queries
+getAllLoreEntries:
+SELECT * FROM Lore ORDER BY updatedAt DESC;
+
+getLoreEntryById:
+SELECT * FROM Lore WHERE id = ?;
+
+-- FTS-based search
+searchLoreEntries:
+SELECT Lore.*
+FROM LoreFts
+JOIN Lore ON Lore.id = LoreFts.rowid
+WHERE LoreFts MATCH ?
+ORDER BY updatedAt DESC;
+
+-- Legacy LIKE-based search (fallback)
+searchLoreEntriesLike:
+WITH search_query AS (
+    SELECT '%' || ? || '%' AS query
+)
+SELECT Lore.*
+FROM LoreFts
+JOIN Lore ON Lore.id = LoreFts.rowid
+WHERE LoreFts.title LIKE (SELECT query FROM search_query)
+   OR LoreFts.content LIKE (SELECT query FROM search_query)
+   OR LoreFts.category LIKE (SELECT query FROM search_query)
+   OR LoreFts.tags LIKE (SELECT query FROM search_query);
+
+-- Get lore entries by category
+getLoreEntriesByCategory:
+SELECT * FROM Lore WHERE category = ? ORDER BY updatedAt DESC;
+
+-- Get lore entries by tag
+getLoreEntriesByTag:
+SELECT Lore.*
+FROM Lore
+WHERE json_extract(tags, '$[*]') LIKE '%' || ? || '%'
+ORDER BY updatedAt DESC;
+
+-- Get lore entries by campaign ID
+getLoreEntriesByCampaignId:
+SELECT * FROM Lore WHERE campaignId = ? ORDER BY updatedAt DESC;
+
+insertLoreEntry:
+INSERT INTO Lore(id, campaignId, title, content, category, tags, relatedEntries, createdAt, updatedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateLoreEntry:
+UPDATE Lore
+SET title = ?,
+    content = ?,
+    category = ?,
+    tags = ?,
+    relatedEntries = ?,
+    updatedAt = ?
+WHERE id = ?;
+
+deleteLoreEntry:
+DELETE FROM Lore WHERE id = ?;
+
+
+-- Create triggers for Lore FTS table
+CREATE TRIGGER lore_ai AFTER INSERT ON Lore BEGIN
+    INSERT INTO LoreFts(rowid, title, content, category, tags)
+    VALUES (new.id, new.title, new.content, new.category, new.tags);
+END;
+
+CREATE TRIGGER lore_ad AFTER DELETE ON Lore BEGIN
+    INSERT INTO LoreFts(LoreFts, rowid, title, content, category, tags)
+    VALUES ('delete', old.id, old.title, old.content, old.category, old.tags);
+END;
+
+CREATE TRIGGER lore_au AFTER UPDATE ON Lore BEGIN
+    INSERT INTO LoreFts(LoreFts, rowid, title, content, category, tags)
+    VALUES ('delete', old.id, old.title, old.content, old.category, old.tags);
+    INSERT INTO LoreFts(rowid, title, content, category, tags)
+    VALUES (new.id, new.title, new.content, new.category, new.tags);
+END;

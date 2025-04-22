@@ -1,10 +1,14 @@
 package net.tactware.worldweaver.bl
 
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.snapshots.SnapshotStateList
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
-import net.tactware.worldweaver.dal.model.Campaign
+import net.tactware.worldweaver.dal.model.campaign.Campaign
+import net.tactware.worldweaver.dal.model.GameMechanics
 import net.tactware.worldweaver.dal.repository.CampaignRepository
 import org.koin.core.annotation.Single
 
@@ -17,21 +21,33 @@ class CampaignService(
     private val campaignRepository: CampaignRepository
 ) {
     // In-memory storage for campaigns
-    private val _campaigns = mutableStateListOf<Campaign>()
+    private val _campaigns = MutableStateFlow<List<Campaign>>(emptyList())
 
-    // Public read-only access to campaigns
-    val campaigns: SnapshotStateList<Campaign> = _campaigns
+    // Public read-only access to campaigns as a Flow
+    val campaignsFlow: StateFlow<List<Campaign>> = _campaigns.asStateFlow()
+    
+    // For backward compatibility
+    val campaigns: List<Campaign>
+        get() = _campaigns.value
 
     // Track the active campaign ID
-    private val _activeCampaignId = mutableStateOf<String?>(null)
+    private val _activeCampaignId = MutableStateFlow<String?>(null)
 
-    // Public read-only access to active campaign ID
+    // Public read-only access to active campaign ID as a Flow
+    val activeCampaignIdFlow: StateFlow<String?> = _activeCampaignId.asStateFlow()
+    
+    // For backward compatibility
     val activeCampaignId: String?
         get() = _activeCampaignId.value
 
-    // Public access to the active campaign
+    // Public access to the active campaign as a Flow
+    val activeCampaignFlow: Flow<Campaign?> = combine(_activeCampaignId, _campaigns) { id, campaigns ->
+        id?.let { campaignId -> campaigns.find { it.id == campaignId } }
+    }
+    
+    // For backward compatibility
     val activeCampaign: Campaign?
-        get() = _activeCampaignId.value?.let { id -> _campaigns.find { it.id == id } }
+        get() = _activeCampaignId.value?.let { id -> _campaigns.value.find { it.id == id } }
 
     // Initialize by loading campaigns from the database
     init {
@@ -39,7 +55,7 @@ class CampaignService(
         loadCampaignsFromDatabase()
 
         // If no campaigns exist, create a sample campaign
-        if (_campaigns.isEmpty()) {
+        if (_campaigns.value.isEmpty()) {
             val id = addCampaign(
                 name = "The Shadow of Malachar",
                 description = "Five hundred years after the Great War, the descendants of the Lich King Malachar seek to resurrect their master and plunge the world into darkness once more.",
@@ -53,9 +69,9 @@ class CampaignService(
             )
             // Set the first campaign as active by default
             setActiveCampaign(id)
-        } else if (_activeCampaignId.value == null && _campaigns.isNotEmpty()) {
+        } else if (_activeCampaignId.value == null && _campaigns.value.isNotEmpty()) {
             // Set the first campaign as active by default if none is active
-            setActiveCampaign(_campaigns.first().id)
+            setActiveCampaign(_campaigns.value.first().id)
         }
     }
 
@@ -65,8 +81,7 @@ class CampaignService(
     private fun loadCampaignsFromDatabase() {
         try {
             val campaigns = campaignRepository.getAllCampaigns()
-            _campaigns.clear()
-            _campaigns.addAll(campaigns)
+            _campaigns.value = campaigns
         } catch (e: Exception) {
             // Log the error
             println("Error loading campaigns from database: ${e.message}")
@@ -83,7 +98,8 @@ class CampaignService(
         playerCharacters: List<String> = emptyList(),
         activeQuests: List<String> = emptyList(),
         completedQuests: List<String> = emptyList(),
-        notes: String = ""
+        notes: String = "",
+        mechanics: GameMechanics = GameMechanics.FIFTH_EDITION
     ): String {
         val campaign = Campaign(
             name = name,
@@ -92,11 +108,12 @@ class CampaignService(
             playerCharacters = playerCharacters,
             activeQuests = activeQuests,
             completedQuests = completedQuests,
-            notes = notes
+            notes = notes,
+            mechanics = mechanics
         )
 
         // Add to in-memory storage
-        _campaigns.add(campaign)
+        _campaigns.value = _campaigns.value + campaign
 
         // Save to database
         try {
@@ -109,6 +126,7 @@ class CampaignService(
                 activeQuests = campaign.activeQuests,
                 completedQuests = campaign.completedQuests,
                 notes = campaign.notes,
+                mechanics = campaign.mechanics,
                 createdAt = campaign.createdAt,
                 updatedAt = campaign.updatedAt
             )
@@ -131,11 +149,13 @@ class CampaignService(
         playerCharacters: List<String>? = null,
         activeQuests: List<String>? = null,
         completedQuests: List<String>? = null,
-        notes: String? = null
+        notes: String? = null,
+        mechanics: GameMechanics? = null
     ) {
-        val index = _campaigns.indexOfFirst { it.id == id }
+        val currentCampaigns = _campaigns.value
+        val index = currentCampaigns.indexOfFirst { it.id == id }
         if (index != -1) {
-            val campaign = _campaigns[index]
+            val campaign = currentCampaigns[index]
             val updatedCampaign = campaign.copy(
                 name = name ?: campaign.name,
                 description = description ?: campaign.description,
@@ -144,11 +164,14 @@ class CampaignService(
                 activeQuests = activeQuests ?: campaign.activeQuests,
                 completedQuests = completedQuests ?: campaign.completedQuests,
                 notes = notes ?: campaign.notes,
+                mechanics = mechanics ?: campaign.mechanics,
                 updatedAt = Clock.System.now()
             )
 
             // Update in-memory storage
-            _campaigns[index] = updatedCampaign
+            val updatedCampaigns = currentCampaigns.toMutableList()
+            updatedCampaigns[index] = updatedCampaign
+            _campaigns.value = updatedCampaigns
 
             // Update in database
             try {
@@ -161,6 +184,7 @@ class CampaignService(
                     activeQuests = updatedCampaign.activeQuests,
                     completedQuests = updatedCampaign.completedQuests,
                     notes = updatedCampaign.notes,
+                    mechanics = updatedCampaign.mechanics,
                     updatedAt = updatedCampaign.updatedAt
                 )
             } catch (e: Exception) {
@@ -175,7 +199,7 @@ class CampaignService(
      */
     fun removeCampaign(id: String) {
         // Remove from in-memory storage
-        _campaigns.removeIf { it.id == id }
+        _campaigns.value = _campaigns.value.filter { it.id != id }
 
         // Remove from database
         try {
@@ -214,7 +238,7 @@ class CampaignService(
 
         // Fall back to in-memory search if database search fails or returns no results
         val lowercaseQuery = query.lowercase()
-        return _campaigns.filter { 
+        return _campaigns.value.filter { 
             it.name.lowercase().contains(lowercaseQuery) || 
             it.description.lowercase().contains(lowercaseQuery) ||
             it.setting.lowercase().contains(lowercaseQuery) ||
@@ -227,8 +251,22 @@ class CampaignService(
      */
     fun setActiveCampaign(id: String?) {
         // Only set if the campaign exists or id is null (to clear active campaign)
-        if (id == null || _campaigns.any { it.id == id }) {
+        if (id == null || _campaigns.value.any { it.id == id }) {
             _activeCampaignId.value = id
         }
+    }
+    
+    /**
+     * Gets a campaign by ID
+     */
+    fun getCampaignById(id: String): Campaign? {
+        return _campaigns.value.find { it.id == id }
+    }
+    
+    /**
+     * Gets a campaign by ID as a Flow
+     */
+    fun getCampaignByIdFlow(id: String): Flow<Campaign?> {
+        return _campaigns.map { campaigns -> campaigns.find { it.id == id } }
     }
 }

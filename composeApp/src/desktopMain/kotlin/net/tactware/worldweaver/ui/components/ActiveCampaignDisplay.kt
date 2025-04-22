@@ -12,7 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import net.tactware.nimbus.appwide.ui.theme.spacing
-import net.tactware.worldweaver.dal.model.Campaign
+import net.tactware.worldweaver.dal.model.campaign.Campaign
 
 @Composable
 fun ActiveCampaignDisplay(campaign: Campaign?) {
@@ -28,18 +28,18 @@ fun ActiveCampaignDisplay(campaign: Campaign?) {
             ) {
                 Text(
                     "Active Campaign: ",
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleSmall
                 )
                 Text(
                     activeCampaign.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
         }
     } ?: Text(
         "No active campaign selected. Please select a campaign first.",
-        style = MaterialTheme.typography.bodyLarge,
+        style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.error
     )
 }

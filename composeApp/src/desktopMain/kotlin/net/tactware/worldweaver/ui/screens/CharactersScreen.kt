@@ -24,18 +24,30 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,17 +57,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import net.tactware.nimbus.appwide.ui.theme.spacing
-import net.tactware.worldweaver.bl.CampaignService
-import net.tactware.worldweaver.bl.CharacterService
+import net.tactware.worldweaver.dal.model.character.Character
+import net.tactware.worldweaver.dal.model.character.CharacterType
 import net.tactware.worldweaver.ui.components.ActiveCampaignDisplay
-import net.tactware.worldweaver.ui.viewmodel.MainScreenAction
-import net.tactware.worldweaver.ui.viewmodel.MainViewModel
+import net.tactware.worldweaver.ui.viewmodel.CharacterInteraction
+import net.tactware.worldweaver.ui.viewmodel.CharacterViewModel
+import net.tactware.worldweaver.bl.CampaignService
+import net.tactware.worldweaver.ui.scaffold.components.DesktopAreaScaffold
+import net.tactware.worldweaver.ui.scaffold.components.DesktopActionBar
+import net.tactware.worldweaver.ui.scaffold.components.DesktopPanel
+import net.tactware.worldweaver.ui.scaffold.state.rememberNavigationPanelState
+import androidx.compose.runtime.collectAsState
 import org.koin.compose.koinInject
 
 @Composable
 private fun CharacterItem(
-    character: CharacterService.Character,
+    character: Character,
     isSelected: Boolean,
     onSelect: () -> Unit,
     onEdit: () -> Unit,
@@ -65,7 +85,7 @@ private fun CharacterItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = MaterialTheme.spacing.small)
-            .clickable { onSelect() },
+            .clickable(onClick = onSelect),
         colors = CardDefaults.elevatedCardColors(
             containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow
         ),
@@ -85,7 +105,7 @@ private fun CharacterItem(
                 Text(
                     character.name,
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Row(
@@ -121,6 +141,22 @@ private fun CharacterItem(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
+                        "Type",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        when(character.type) {
+                            CharacterType.PLAYER_CHARACTER -> "Player Character"
+                            CharacterType.NON_PLAYER_CHARACTER -> "NPC"
+                            CharacterType.MONSTER -> "Monster"
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
                         "Race",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -131,77 +167,80 @@ private fun CharacterItem(
                     )
                 }
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Class",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        if (character.characterClass.isNotEmpty()) "${character.characterClass} (${character.subclass})" else "N/A",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                if (character.type == CharacterType.PLAYER_CHARACTER || character.characterClass.isNotBlank()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Class",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "${character.characterClass} ${if (character.subclass.isNotBlank()) "(${character.subclass})" else ""}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Level",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        if (character.level > 0) character.level.toString() else "N/A",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-            ) {
-                Column(modifier = Modifier.weight(2f)) {
-                    Text(
-                        "Description",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        character.description.ifEmpty { "No description available" },
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                if (character.type == CharacterType.PLAYER_CHARACTER || character.level > 0) {
+                    Column(modifier = Modifier.weight(0.5f)) {
+                        Text(
+                            "Level",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            character.level.toString(),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             }
+        }
+    }
+}
 
-            // Additional info
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-            Divider()
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+@Composable
+private fun NavigationPanelCharacterItem(
+    character: Character,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp, horizontal = 8.dp),
+        color = when {
+            isSelected -> MaterialTheme.colorScheme.secondaryContainer
+            else -> MaterialTheme.colorScheme.surface
+        },
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Character name with type indicator
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "HP: ${character.hitPoints}/${character.maxHitPoints}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    character.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-
                 Text(
-                    "AC: ${character.armorClass}",
+                    when(character.type) {
+                        CharacterType.PLAYER_CHARACTER -> "PC - ${character.race} ${character.characterClass}"
+                        CharacterType.NON_PLAYER_CHARACTER -> "NPC - ${character.race}"
+                        CharacterType.MONSTER -> "Monster - ${character.race}"
+                    },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Text(
-                    "Type: ${character.type.name.replace('_', ' ')}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -209,28 +248,28 @@ private fun CharacterItem(
 }
 
 @Composable
-private fun CharacterDetailView(
-    character: CharacterService.Character?,
-    onEdit: (CharacterService.Character) -> Unit
+private fun CharacterDetail(
+    character: Character?,
+    onEdit: (String) -> Unit
 ) {
     if (character == null) {
-        // No character selected
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(MaterialTheme.spacing.medium),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 "Select a character to view details",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.bodyLarge
             )
         }
     } else {
-        // Character details
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(MaterialTheme.spacing.medium),
+                .padding(MaterialTheme.spacing.medium)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
         ) {
             // Header with name and edit button
@@ -244,18 +283,26 @@ private fun CharacterDetailView(
                     style = MaterialTheme.typography.headlineMedium
                 )
 
-                IconButton(onClick = { onEdit(character) }) {
+                Button(
+                    onClick = { onEdit(character.id) }
+                ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Edit Character",
-                        tint = MaterialTheme.colorScheme.primary
+                        modifier = Modifier.padding(end = MaterialTheme.spacing.small)
                     )
+                    Text("Edit")
                 }
             }
 
-            Divider()
+            HorizontalDivider()
 
             // Basic info section
+            Text(
+                "Basic Information",
+                style = MaterialTheme.typography.titleMedium
+            )
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
@@ -267,8 +314,12 @@ private fun CharacterDetailView(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        character.type.name.replace('_', ' '),
-                        style = MaterialTheme.typography.bodyLarge
+                        when(character.type) {
+                            CharacterType.PLAYER_CHARACTER -> "Player Character"
+                            CharacterType.NON_PLAYER_CHARACTER -> "NPC"
+                            CharacterType.MONSTER -> "Monster"
+                        },
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
 
@@ -280,46 +331,64 @@ private fun CharacterDetailView(
                     )
                     Text(
                         character.race,
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+            if (character.type == CharacterType.PLAYER_CHARACTER || character.characterClass.isNotBlank()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Class",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            character.characterClass,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
 
-            // Class and level info
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Class",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        if (character.characterClass.isNotEmpty()) "${character.characterClass} (${character.subclass})" else "N/A",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
+                    if (character.subclass.isNotBlank()) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Subclass",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                character.subclass,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Level",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        if (character.level > 0) character.level.toString() else "N/A",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+                    Column(modifier = Modifier.weight(0.5f)) {
+                        Text(
+                            "Level",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            character.level.toString(),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+            Divider()
 
-            // Combat stats
+            // Combat stats section
+            Text(
+                "Combat Stats",
+                style = MaterialTheme.typography.titleMedium
+            )
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
@@ -332,7 +401,7 @@ private fun CharacterDetailView(
                     )
                     Text(
                         "${character.hitPoints}/${character.maxHitPoints}",
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
 
@@ -344,37 +413,46 @@ private fun CharacterDetailView(
                     )
                     Text(
                         character.armorClass.toString(),
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Speed",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "${character.speed} ft.",
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
 
             Divider()
 
-            // Description
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    "Description",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    character.description.ifEmpty { "No description available" },
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+            // Description section
+            Text(
+                "Description",
+                style = MaterialTheme.typography.titleMedium
+            )
 
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+            Text(
+                character.description.ifBlank { "No description available." },
+                style = MaterialTheme.typography.bodyMedium
+            )
 
-            // Notes
-            Column(modifier = Modifier.fillMaxWidth()) {
+            if (character.notes.isNotBlank()) {
+                Divider()
+
                 Text(
                     "Notes",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.titleMedium
                 )
+
                 Text(
-                    character.notes.ifEmpty { "No notes available" },
+                    character.notes,
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -383,427 +461,333 @@ private fun CharacterDetailView(
 }
 
 @Composable
-fun CharactersScreen(viewModel: MainViewModel) {
-    val campaignService = koinInject<CampaignService>()
-    val characterService = koinInject<CharacterService>()
+fun CharactersScreen() {
+    val viewModel = koinInject<CharacterViewModel>()
 
-    // State for character forms
-    var showNewCharacterForm by remember { mutableStateOf(false) }
-    var characterName by remember { mutableStateOf("") }
-    var characterRace by remember { mutableStateOf("") }
-    var characterClass by remember { mutableStateOf("") }
-    var characterSubclass by remember { mutableStateOf("") }
-    var characterLevel by remember { mutableStateOf("1") }
-    var characterHitPoints by remember { mutableStateOf("10") }
-    var characterArmorClass by remember { mutableStateOf("10") }
-    var characterDescription by remember { mutableStateOf("") }
-    var characterNotes by remember { mutableStateOf("") }
-    var selectedCharacterType by remember { mutableStateOf(CharacterService.CharacterType.PLAYER_CHARACTER) }
+    // Get state from the ViewModel
+    val state = viewModel.state
+    val showNewCharacterForm = state.showNewCharacterForm
+    val editingCharacterId = state.editingCharacterId
+    val showEditForm = editingCharacterId != null
+    val selectedCharacterId = state.selectedCharacterId
 
-    // State for filtering characters
-    var filterType by remember { mutableStateOf<CharacterService.CharacterType?>(null) }
+    // Get characters from the ViewModel
+    val characters = viewModel.characters.collectAsState().value
 
-    // State for editing characters
-    var editingCharacterId by remember { mutableStateOf<String?>(null) }
-    var showEditForm by remember { mutableStateOf(false) }
+    // Get active campaign
+    val activeCampaign = viewModel.activeCampaign
 
-    // State for selected character (for list-detail view)
-    var selectedCharacter by remember { mutableStateOf<CharacterService.Character?>(null) }
+    // Get selected character
+    val selectedCharacter = characters.find { it.id == selectedCharacterId }
 
-    // Function to start editing a character
-    fun startEditingCharacter(character: CharacterService.Character) {
-        characterName = character.name
-        characterRace = character.race
-        characterClass = character.characterClass
-        characterSubclass = character.subclass
-        characterLevel = character.level.toString()
-        characterHitPoints = character.hitPoints.toString()
-        characterArmorClass = character.armorClass.toString()
-        characterDescription = character.description
-        characterNotes = character.notes
-        selectedCharacterType = character.type
-        editingCharacterId = character.id
-        showEditForm = true
-        showNewCharacterForm = false
-    }
 
-    // Function to cancel editing
-    fun cancelEditing() {
-        editingCharacterId = null
-        showEditForm = false
-        characterName = ""
-        characterRace = ""
-        characterClass = ""
-        characterSubclass = ""
-        characterLevel = "1"
-        characterHitPoints = "10"
-        characterArmorClass = "10"
-        characterDescription = ""
-        characterNotes = ""
-        selectedCharacterType = CharacterService.CharacterType.PLAYER_CHARACTER
-    }
-
-    // Function to save edited character
-    fun saveEditedCharacter() {
-        editingCharacterId?.let { id ->
-            viewModel.onInteraction(
-                MainScreenAction.UpdateCharacter(
-                    id = id,
-                    name = characterName,
-                    type = selectedCharacterType,
-                    race = characterRace,
-                    characterClass = characterClass,
-                    subclass = characterSubclass,
-                    level = characterLevel.toIntOrNull(),
-                    hitPoints = characterHitPoints.toIntOrNull(),
-                    maxHitPoints = characterHitPoints.toIntOrNull(),
-                    armorClass = characterArmorClass.toIntOrNull(),
-                    description = characterDescription,
-                    notes = characterNotes
-                )
-            )
-            cancelEditing()
-        }
-    }
-
-    // Get filtered characters
-    val filteredCharacters = when (filterType) {
-        CharacterService.CharacterType.PLAYER_CHARACTER -> characterService.getPlayerCharacters()
-        CharacterService.CharacterType.NON_PLAYER_CHARACTER -> characterService.getNonPlayerCharacters()
-        CharacterService.CharacterType.MONSTER -> characterService.getMonsters()
-        null -> characterService.characters
-    }
-
+    // State for scrolling
     val scrollState = rememberScrollState()
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(MaterialTheme.spacing.medium),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-    ) {
-        // Header section
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                "Characters",
-                style = MaterialTheme.typography.headlineMedium
-            )
-            Text(
-                "Manage your characters, NPCs, and monsters.",
-                style = MaterialTheme.typography.bodyLarge
-            )
+    val navigationPanelState = rememberNavigationPanelState(true)
 
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-
-            // Display active campaign info
-            ActiveCampaignDisplay(campaignService.activeCampaign)
-        }
-
-        Divider(modifier = Modifier.fillMaxWidth())
-
-        // Character actions row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Your Characters",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            // New Character Button
-            if (showNewCharacterForm) {
-                OutlinedButton(
-                    onClick = { showNewCharacterForm = false }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Cancel",
-                        modifier = Modifier.padding(end = MaterialTheme.spacing.small)
-                    )
-                    Text("Cancel")
-                }
-            } else {
-                Button(
-                    onClick = { 
-                        showNewCharacterForm = true
-                        showEditForm = false
-                        editingCharacterId = null
-                        characterName = ""
-                        characterRace = ""
-                        characterClass = ""
-                        characterSubclass = ""
-                        characterLevel = "1"
-                        characterHitPoints = "10"
-                        characterArmorClass = "10"
-                        characterDescription = ""
-                        characterNotes = ""
-                        selectedCharacterType = CharacterService.CharacterType.PLAYER_CHARACTER
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Create New Character",
-                        modifier = Modifier.padding(end = MaterialTheme.spacing.small)
-                    )
-                    Text("Create New Character")
-                }
-            }
-        }
-
-        // Filter buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-        ) {
-            OutlinedButton(
-                onClick = { filterType = null },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("All (${characterService.characters.size})")
-            }
-
-            OutlinedButton(
-                onClick = { filterType = CharacterService.CharacterType.PLAYER_CHARACTER },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("PCs (${characterService.getPlayerCharacters().size})")
-            }
-
-            OutlinedButton(
-                onClick = { filterType = CharacterService.CharacterType.NON_PLAYER_CHARACTER },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("NPCs (${characterService.getNonPlayerCharacters().size})")
-            }
-
-            OutlinedButton(
-                onClick = { filterType = CharacterService.CharacterType.MONSTER },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Monsters (${characterService.getMonsters().size})")
-            }
-        }
-
-        // Empty placeholder - form will be shown in the list-detail layout
-
-        // List-Detail Layout
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(500.dp), // Increased height for better visibility
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-        ) {
-            // Left side - Character list
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-            ) {
-                // Use LazyColumn for better performance with large lists
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-                ) {
-                    items(filteredCharacters) { character ->
-                        CharacterItem(
-                            character = character,
-                            isSelected = selectedCharacter?.id == character.id,
-                            onSelect = {
-                                selectedCharacter = character
-                            },
-                            onEdit = {
-                                startEditingCharacter(character)
-                            },
-                            onDelete = {
-                                viewModel.onInteraction(MainScreenAction.DeleteCharacter(character.id))
-                            }
+    DesktopAreaScaffold(
+        navigationPanelState = navigationPanelState,
+        actionBar = {
+            DesktopActionBar(
+                expansionAction = {
+                    IconButton(onClick = { navigationPanelState.toggle() }) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = "Toggle Navigation Panel"
                         )
                     }
-                }
-            }
+                },
+                primaryAction = {
+                    Button(
+                        onClick = { viewModel.onInteraction(CharacterInteraction.ShowNewCharacterForm) },
+                        shape = RoundedCornerShape(16.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        enabled = !showNewCharacterForm && !showEditForm
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Create New Character",
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text("New Character")
+                    }
+                },
+                actions = {
+                    // Only show these actions when a character is selected
+                    if (selectedCharacter != null) {
+                        // Edit button as IconButton
+                        IconButton(
+                            onClick = { viewModel.onInteraction(CharacterInteraction.StartEditingCharacter(selectedCharacter.id)) },
+                            enabled = !showNewCharacterForm && !showEditForm
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit Character"
+                            )
+                        }
 
-            // Right side - Character details or form
-            Box(
+                        // Delete button as IconButton
+                        IconButton(
+                            onClick = { viewModel.onInteraction(CharacterInteraction.DeleteCharacter(selectedCharacter.id)) },
+                            enabled = !showNewCharacterForm && !showEditForm
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete Character",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
+            )
+        },
+        navigationPanel = {
+            DesktopPanel(
+                header = {
+                    Text(
+                        "Characters",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                },
+                content = {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(characters) { character ->
+                            val isSelected = selectedCharacterId == character.id
+                            NavigationPanelCharacterItem(
+                                character = character,
+                                isSelected = isSelected,
+                                onClick = {
+                                    viewModel.onInteraction(CharacterInteraction.SelectCharacter(character.id))
+                                    // Close any open forms
+                                    if (showNewCharacterForm) {
+                                        viewModel.onInteraction(CharacterInteraction.HideNewCharacterForm)
+                                    }
+                                    if (showEditForm) {
+                                        viewModel.onInteraction(CharacterInteraction.CancelEditing)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            )
+        },
+        content = {
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(MaterialTheme.spacing.medium),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
             ) {
+                // Header section with selected character
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        if (selectedCharacter != null) "Character: ${selectedCharacter.name}" else "Characters",
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+
+                    if (selectedCharacter != null) {
+                        Text(
+                            when(selectedCharacter.type) {
+                                CharacterType.PLAYER_CHARACTER -> "Player Character - ${selectedCharacter.race} ${selectedCharacter.characterClass}"
+                                CharacterType.NON_PLAYER_CHARACTER -> "NPC - ${selectedCharacter.race}"
+                                CharacterType.MONSTER -> "Monster - ${selectedCharacter.race}"
+                            },
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    } else {
+                        Text(
+                            "Select a character from the navigation panel or create a new one.",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+                }
+
+                HorizontalDivider(modifier = Modifier.fillMaxWidth())
+
+                // Form actions row - only show when form is visible
                 if (showNewCharacterForm || showEditForm) {
-                    // Show character form
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            if (showEditForm) "Edit Character" else "Create New Character",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+
+                        // Cancel button
+                        OutlinedButton(
+                            onClick = {
+                                if (showEditForm) {
+                                    viewModel.onInteraction(CharacterInteraction.CancelEditing)
+                                } else {
+                                    viewModel.onInteraction(CharacterInteraction.HideNewCharacterForm)
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Cancel",
+                                modifier = Modifier.padding(end = MaterialTheme.spacing.small)
+                            )
+                            Text("Cancel")
+                        }
+                    }
+                } else if (selectedCharacter != null) {
+                    // Show character details when a character is selected and no form is visible
+                    Text(
+                        "Character Details",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+
+                // Character Form or Details
+                if (showNewCharacterForm) {
+                    // New Character Form
                     ElevatedCard(
-                        modifier = Modifier.fillMaxSize().padding(vertical = MaterialTheme.spacing.small),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = MaterialTheme.spacing.small),
                         colors = CardDefaults.elevatedCardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                         ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Column(
-                            modifier = Modifier.fillMaxSize().padding(MaterialTheme.spacing.medium),
+                            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.medium),
                             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
                         ) {
-                            Text(
-                                if (showEditForm) "Edit Character" else "Create New Character",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-
-                            // Character type selection
+                            // Form fields
                             Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-                            ) {
-                                Text(
-                                    "Character Type",
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-                                ) {
-                                    CharacterService.CharacterType.values().forEach { type ->
-                                        OutlinedButton(
-                                            onClick = { selectedCharacterType = type },
-                                            modifier = Modifier.weight(1f),
-                                            colors = if (selectedCharacterType == type) {
-                                                androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                                )
-                                            } else {
-                                                androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
-                                            }
-                                        ) {
-                                            Text(type.name.replace('_', ' '))
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Form fields in a scrollable column
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f)
-                                    .verticalScroll(rememberScrollState()),
                                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
                             ) {
-                                // Name Field
+                                // Name field
                                 OutlinedTextField(
-                                    value = characterName,
-                                    onValueChange = { characterName = it },
-                                    modifier = Modifier.fillMaxWidth(),
+                                    value = state.name,
+                                    onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredName(it)) },
                                     label = { Text("Name") },
-                                    placeholder = { Text("Enter character name") },
-                                    singleLine = true,
-                                    supportingText = { 
-                                        if (characterName.isBlank()) {
-                                            Text("Name is required")
-                                        }
-                                    }
+                                    modifier = Modifier.fillMaxWidth(),
+                                    isError = state.name.isEmpty()
                                 )
 
-                                // Race Field
+                                // Type selection
+                                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                    CharacterType.entries.forEach { type ->
+                                        SegmentedButton(
+                                            selected = viewModel.state.type == type,
+                                            onClick = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredType(type)) },
+                                            shape = SegmentedButtonDefaults.itemShape(type.ordinal, CharacterType.entries.size)
+                                        ) {
+                                            Text(
+                                                text = when (type) {
+                                                    CharacterType.PLAYER_CHARACTER -> "PC"
+                                                    CharacterType.NON_PLAYER_CHARACTER -> "NPC"
+                                                    CharacterType.MONSTER -> "Monster"
+                                                },
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Race field
                                 OutlinedTextField(
-                                    value = characterRace,
-                                    onValueChange = { characterRace = it },
-                                    modifier = Modifier.fillMaxWidth(),
+                                    value = state.race,
+                                    onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredRace(it)) },
                                     label = { Text("Race") },
-                                    placeholder = { Text("Enter character race") },
-                                    singleLine = true,
-                                    supportingText = { 
-                                        if (characterRace.isBlank()) {
-                                            Text("Race is required")
-                                        }
-                                    }
+                                    modifier = Modifier.fillMaxWidth(),
+                                    isError = state.race.isEmpty()
                                 )
 
-                                // Class and Subclass Fields
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-                                ) {
-                                    OutlinedTextField(
-                                        value = characterClass,
-                                        onValueChange = { characterClass = it },
-                                        modifier = Modifier.weight(1f),
-                                        label = { Text("Class") },
-                                        placeholder = { Text("Enter class") },
-                                        singleLine = true,
-                                        enabled = selectedCharacterType != CharacterService.CharacterType.MONSTER
-                                    )
-
-                                    OutlinedTextField(
-                                        value = characterSubclass,
-                                        onValueChange = { characterSubclass = it },
-                                        modifier = Modifier.weight(1f),
-                                        label = { Text("Subclass") },
-                                        placeholder = { Text("Enter subclass") },
-                                        singleLine = true,
-                                        enabled = selectedCharacterType != CharacterService.CharacterType.MONSTER
-                                    )
-                                }
-
-                                // Level, HP, and AC Fields
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-                                ) {
-                                    OutlinedTextField(
-                                        value = characterLevel,
-                                        onValueChange = { 
-                                            characterLevel = it.filter { char -> char.isDigit() }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        label = { Text("Level") },
-                                        placeholder = { Text("Enter level") },
-                                        singleLine = true,
-                                        enabled = selectedCharacterType != CharacterService.CharacterType.MONSTER
-                                    )
-
-                                    OutlinedTextField(
-                                        value = characterHitPoints,
-                                        onValueChange = { 
-                                            characterHitPoints = it.filter { char -> char.isDigit() }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        label = { Text("Hit Points") },
-                                        placeholder = { Text("Enter HP") },
-                                        singleLine = true
-                                    )
-
-                                    OutlinedTextField(
-                                        value = characterArmorClass,
-                                        onValueChange = { 
-                                            characterArmorClass = it.filter { char -> char.isDigit() }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        label = { Text("Armor Class") },
-                                        placeholder = { Text("Enter AC") },
-                                        singleLine = true
-                                    )
-                                }
-
-                                // Description Field
+                                // Class field
                                 OutlinedTextField(
-                                    value = characterDescription,
-                                    onValueChange = { characterDescription = it },
-                                    modifier = Modifier.fillMaxWidth(),
+                                    value = state.characterClass,
+                                    onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredClass(it)) },
+                                    label = { Text("Class") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // Subclass field
+                                OutlinedTextField(
+                                    value = state.subclass,
+                                    onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredSubclass(it)) },
+                                    label = { Text("Subclass") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // Level field
+                                OutlinedTextField(
+                                    value = state.level?.toString() ?: "",
+                                    onValueChange = { 
+                                        val level = it.toIntOrNull()
+                                        viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredLevel(level))
+                                    },
+                                    label = { Text("Level") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // Hit Points field
+                                OutlinedTextField(
+                                    value = state.hitPoints?.toString() ?: "",
+                                    onValueChange = { 
+                                        val hp = it.toIntOrNull()
+                                        viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredHitPoints(hp))
+                                    },
+                                    label = { Text("Hit Points") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // Max Hit Points field
+                                OutlinedTextField(
+                                    value = state.maxHitPoints?.toString() ?: "",
+                                    onValueChange = { 
+                                        val maxHp = it.toIntOrNull()
+                                        viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredMaxHitPoints(maxHp))
+                                    },
+                                    label = { Text("Max Hit Points") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // Armor Class field
+                                OutlinedTextField(
+                                    value = state.armorClass?.toString() ?: "",
+                                    onValueChange = { 
+                                        val ac = it.toIntOrNull()
+                                        viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredArmorClass(ac))
+                                    },
+                                    label = { Text("Armor Class") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // Description field
+                                OutlinedTextField(
+                                    value = state.description,
+                                    onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredDescription(it)) },
                                     label = { Text("Description") },
-                                    placeholder = { Text("Enter character description") },
-                                    minLines = 2,
-                                    maxLines = 3
+                                    modifier = Modifier.fillMaxWidth(),
+                                    minLines = 3
                                 )
 
-                                // Notes Field
+                                // Notes field
                                 OutlinedTextField(
-                                    value = characterNotes,
-                                    onValueChange = { characterNotes = it },
-                                    modifier = Modifier.fillMaxWidth(),
+                                    value = state.notes,
+                                    onValueChange = { viewModel.onInteraction(CharacterInteraction.DataEntry.EnteredNotes(it)) },
                                     label = { Text("Notes") },
-                                    placeholder = { Text("Enter character notes (optional)") },
-                                    minLines = 2,
-                                    maxLines = 3
+                                    modifier = Modifier.fillMaxWidth(),
+                                    minLines = 3
                                 )
                             }
 
@@ -813,88 +797,62 @@ fun CharactersScreen(viewModel: MainViewModel) {
                                 horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Cancel Button
+                                Text("* Required fields", style = MaterialTheme.typography.bodySmall)
+
+                                Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+
                                 OutlinedButton(
-                                    onClick = {
-                                        if (showEditForm) {
-                                            cancelEditing()
-                                        } else {
-                                            showNewCharacterForm = false
-                                            characterName = ""
-                                            characterRace = ""
-                                            characterClass = ""
-                                            characterSubclass = ""
-                                            characterLevel = "1"
-                                            characterHitPoints = "10"
-                                            characterArmorClass = "10"
-                                            characterDescription = ""
-                                            characterNotes = ""
-                                            selectedCharacterType = CharacterService.CharacterType.PLAYER_CHARACTER
-                                        }
-                                    },
-                                    modifier = Modifier.padding(end = MaterialTheme.spacing.small)
+                                    onClick = { viewModel.onInteraction(CharacterInteraction.HideNewCharacterForm) }
                                 ) {
                                     Text("Cancel")
                                 }
 
-                                // Submit Button
+                                Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+
                                 Button(
-                                    onClick = {
-                                        if (characterName.isNotBlank() && characterRace.isNotBlank()) {
-                                            if (showEditForm) {
-                                                saveEditedCharacter()
-                                            } else {
-                                                viewModel.onInteraction(
-                                                    MainScreenAction.CreateCharacter(
-                                                        name = characterName,
-                                                        type = selectedCharacterType,
-                                                        race = characterRace,
-                                                        characterClass = characterClass,
-                                                        subclass = characterSubclass,
-                                                        level = characterLevel.toIntOrNull() ?: 1,
-                                                        hitPoints = characterHitPoints.toIntOrNull() ?: 10,
-                                                        maxHitPoints = characterHitPoints.toIntOrNull() ?: 10,
-                                                        armorClass = characterArmorClass.toIntOrNull() ?: 10,
-                                                        description = characterDescription,
-                                                        notes = characterNotes
-                                                    )
-                                                )
-                                                // Reset form
-                                                characterName = ""
-                                                characterRace = ""
-                                                characterClass = ""
-                                                characterSubclass = ""
-                                                characterLevel = "1"
-                                                characterHitPoints = "10"
-                                                characterArmorClass = "10"
-                                                characterDescription = ""
-                                                characterNotes = ""
-                                                showNewCharacterForm = false
-                                            }
-                                        }
-                                    },
-                                    enabled = characterName.isNotBlank() && characterRace.isNotBlank()
+                                    onClick = { viewModel.onInteraction(CharacterInteraction.DataEntry.SubmitCreate) },
+                                    enabled = state.isFormValid
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Check,
-                                        contentDescription = if (showEditForm) "Save Changes" else "Create Character",
+                                        contentDescription = "Save",
                                         modifier = Modifier.padding(end = MaterialTheme.spacing.small)
                                     )
-                                    Text(if (showEditForm) "Save Changes" else "Create Character")
+                                    Text("Create Character")
                                 }
                             }
                         }
                     }
-                } else {
-                    // Show character details
-                    CharacterDetailView(
-                        character = selectedCharacter,
-                        onEdit = { character ->
-                            startEditingCharacter(character)
-                        }
-                    )
+                } else if (selectedCharacter != null && !showEditForm) {
+                    // Display character details in a card
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = MaterialTheme.spacing.small),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        CharacterDetail(
+                            character = selectedCharacter,
+                            onEdit = { id -> viewModel.onInteraction(CharacterInteraction.StartEditingCharacter(id)) }
+                        )
+                    }
+                } else if (!showNewCharacterForm && !showEditForm && selectedCharacter == null) {
+                    // Show a message when no character is selected
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "Select a character from the navigation panel or create a new one.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
-    }
+    )
 }

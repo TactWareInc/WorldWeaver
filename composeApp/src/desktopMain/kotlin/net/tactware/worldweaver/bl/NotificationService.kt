@@ -4,6 +4,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import net.tactware.worldweaver.util.IdGenerator
 import org.koin.core.annotation.Single
 
 /**
@@ -17,7 +18,7 @@ class NotificationService {
      * Data class representing a notification
      */
     data class Notification(
-        val id: String = Companion.generateId(),
+        val id: String = IdGenerator.generateNotificationId(),
         val title: String,
         val message: String,
         val timestamp: Instant = Clock.System.now(),
@@ -83,12 +84,4 @@ class NotificationService {
         return _notifications.count { !it.isRead }
     }
 
-    companion object {
-        /**
-         * Generates a unique ID for a notification
-         */
-        internal fun generateId(): String {
-            return System.currentTimeMillis().toString()
-        }
-    }
 }

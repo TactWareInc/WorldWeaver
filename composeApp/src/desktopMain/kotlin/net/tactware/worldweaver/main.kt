@@ -33,7 +33,6 @@ import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
@@ -50,8 +49,13 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import kotlinx.coroutines.delay
 import net.tactware.nimbus.appwide.ui.theme.spacing
+import net.tactware.worldweaver.bl.CampaignService
 import net.tactware.worldweaver.ui.NotificationIcon
 import net.tactware.worldweaver.ui.navigation.NavItem
+import net.tactware.worldweaver.ui.scaffold.components.DesktopApplicationScaffold
+import net.tactware.worldweaver.ui.scaffold.components.DesktopNavigationRail
+import net.tactware.worldweaver.ui.scaffold.components.DesktopTopBar
+import net.tactware.worldweaver.ui.scaffold.state.rememberNavigationPanelState
 import net.tactware.worldweaver.ui.screens.CampaignsScreen
 import net.tactware.worldweaver.ui.screens.CharactersScreen
 import net.tactware.worldweaver.ui.screens.DashboardScreen
@@ -76,8 +80,9 @@ fun main() = application {
             onCloseRequest = ::exitApplication,
             title = "WorldWeaver",
         ) {
-            // Inject the MainViewModel
+            // Inject the MainViewModel and CampaignService
             val viewModel = koinInject<MainViewModel>()
+            val campaignService = koinInject<CampaignService>()
             val state = viewModel.state
 
             // Use state from the ViewModel
@@ -86,18 +91,28 @@ fun main() = application {
             val showNavItemTitles = state.showNavItemTitles
             val expandColumn = state.expandColumn
 
+            // Get the active campaign
+            val activeCampaign = campaignService.activeCampaign
+
+            // Create a NavigationPanelState to manage the navigation panel expansion
+            val navigationPanelState = rememberNavigationPanelState(initialExpanded = causeNavigationToExpand)
+
+            // Update the NavigationPanelState when causeNavigationToExpand changes
             LaunchedEffect(causeNavigationToExpand) {
                 if (causeNavigationToExpand) {
+                    navigationPanelState.expand()
                     delay(200)
+                    viewModel.onInteraction(MainScreenAction.UpdateNavTitles(true))
+                } else {
+                    navigationPanelState.collapse()
+                    delay(200)
+                    viewModel.onInteraction(MainScreenAction.UpdateNavTitles(false))
                 }
-                viewModel.onInteraction(MainScreenAction.UpdateNavTitles(causeNavigationToExpand))
             }
 
-            LaunchedEffect(causeNavigationToExpand) {
-                if (!causeNavigationToExpand) {
-                    delay(200)
-                }
-                viewModel.onInteraction(MainScreenAction.UpdateExpandColumn(causeNavigationToExpand))
+            // Update expandColumn state based on navigationPanelState
+            LaunchedEffect(navigationPanelState.isExpanded) {
+                viewModel.onInteraction(MainScreenAction.UpdateExpandColumn(navigationPanelState.isExpanded))
             }
 
             val navItems = remember {
@@ -135,28 +150,110 @@ fun main() = application {
                 )
             }
 
-            Scaffold(
-                // Modern dashboard doesn't need a bottom bar
-            ) { innerPadding ->
-                Row(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding)
-                ) {
-                    // Left sidebar navigation - expandable/collapsible with animation
+            DesktopApplicationScaffold(
+                // Top bar with title, search, and user profile
+                topBar = {
+                    DesktopTopBar(
+                        activeCampaign = activeCampaign,
+                        title = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Toggle button for navigation panel
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.secondary)
+                                        .clickable { viewModel.onInteraction(MainScreenAction.ToggleNavigation) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    // Animate the rotation of the icon
+                                    val rotation by animateFloatAsState(
+                                        targetValue = if (causeNavigationToExpand) 0f else 180f,
+                                        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+                                        label = "iconRotation"
+                                    )
+
+                                    Icon(
+                                        Icons.Default.ArrowBack,
+                                        contentDescription = if (causeNavigationToExpand) "Collapse Navigation" else "Expand Navigation",
+                                        tint = MaterialTheme.colorScheme.onSecondary,
+                                        modifier = Modifier.size(20.dp).rotate(rotation)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                Text(
+                                    navItems[selectedNavItem].title,
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+                            }
+                        },
+                        search = {
+                            // Search box
+                            Surface(
+                                modifier = Modifier.width(240.dp).height(40.dp),
+                                shape = RoundedCornerShape(20.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize()
+                                        .padding(horizontal = MaterialTheme.spacing.small),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.Search,
+                                        contentDescription = "Search",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+                                    Text(
+                                        "Search...",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+                        },
+                        actions = {
+                            // Notification icon
+                            NotificationIcon()
+
+                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+
+                            // User profile
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Person,
+                                    contentDescription = "User Profile",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    )
+                },
+                // Navigation rail on the left
+                navigationRail = {
+                    // Calculate the width based on expansion state
                     val navWidth by animateDpAsState(
                         targetValue = if (expandColumn) 200.dp else 56.dp,
                         animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
                         label = "navWidth"
                     )
 
-                    Surface(
-                        modifier = Modifier.width(navWidth).fillMaxHeight(),
-                        color = MaterialTheme.colorScheme.primary
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxHeight().padding(vertical = MaterialTheme.spacing.medium),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium, Alignment.Top)
-                        ) {
+                    DesktopNavigationRail(
+                        width = navWidth,
+                        backgroundColor = MaterialTheme.colorScheme.primary,
+                        header = {
                             // App logo or icon
                             Box(
                                 modifier = Modifier
@@ -173,7 +270,8 @@ fun main() = application {
                             }
 
                             Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-
+                        },
+                        content = {
                             // Navigation items
                             navItems.forEachIndexed { index, item ->
                                 Row(
@@ -215,140 +313,41 @@ fun main() = application {
                                 }
                             }
                         }
-                    }
-
-
-                    // Main content area
+                    )
+                },
+                // Main content area
+                content = {
                     Surface(
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                        color = MaterialTheme.colorScheme.background
+                        color = MaterialTheme.colorScheme.background,
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        Column(
+                        Box(
                             modifier = Modifier.fillMaxSize()
-                                .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
                         ) {
-                            // Header with title, search, and user profile - smaller and more compact
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(bottom = MaterialTheme.spacing.small)
-                                    .height(48.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Row for title and toggle button
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    // Toggle button that straddles the navigation bar
-                                    Box(
-                                        modifier = Modifier
-                                            .size(36.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.secondary) // Different color
-                                            .clickable { viewModel.onInteraction(MainScreenAction.ToggleNavigation) },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        // Animate the rotation of the icon
-                                        val rotation by animateFloatAsState(
-                                            targetValue = if (causeNavigationToExpand) 0f else 180f,
-                                            animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
-                                            label = "iconRotation"
-                                        )
-
-                                        Icon(
-                                            Icons.Default.ArrowBack, // Always use ArrowBack, but rotate it
-                                            contentDescription = if (causeNavigationToExpand) "Collapse Navigation" else "Expand Navigation",
-                                            tint = MaterialTheme.colorScheme.onSecondary,
-                                            modifier = Modifier.size(20.dp).rotate(rotation)
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    Text(
-                                        navItems[selectedNavItem].title,
-                                        style = MaterialTheme.typography.titleLarge
-                                    )
+                            when (selectedNavItem) {
+                                0 -> { // Dashboard
+                                    DashboardScreen(viewModel)
                                 }
-
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-                                ) {
-                                    // Search box
-                                    Surface(
-                                        modifier = Modifier.width(240.dp).height(40.dp),
-                                        shape = RoundedCornerShape(20.dp),
-                                        color = MaterialTheme.colorScheme.surfaceVariant
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.fillMaxSize()
-                                                .padding(horizontal = MaterialTheme.spacing.small),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                Icons.Default.Search,
-                                                contentDescription = "Search",
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
-                                            Text(
-                                                "Search...",
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                            )
-                                        }
-                                    }
-
-                                    // Notification icon
-                                    NotificationIcon()
-
-                                    // User profile
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primary),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Person,
-                                            contentDescription = "User Profile",
-                                            tint = MaterialTheme.colorScheme.onPrimary,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                    }
+                                1 -> { // Campaigns
+                                    CampaignsScreen()
                                 }
-                            }
-
-                            // Content area based on selected navigation item
-                            Box(
-                                modifier = Modifier.fillMaxSize().padding(top = MaterialTheme.spacing.medium)
-                            ) {
-                                when (selectedNavItem) {
-                                    0 -> { // Dashboard
-                                        DashboardScreen(viewModel)
-                                    }
-                                    1 -> { // Campaigns
-                                        CampaignsScreen(viewModel)
-                                    }
-                                    2 -> { // Characters
-                                        CharactersScreen(viewModel)
-                                    }
-                                    3 -> { // Locations
-                                        LocationsScreen()
-                                    }
-                                    4 -> { // Lore
-                                        LoreScreen()
-                                    }
-                                    5 -> { // Encounters
-                                        EncountersScreen()
-                                    }
+                                2 -> { // Characters
+                                    CharactersScreen()
+                                }
+                                3 -> { // Locations
+                                    LocationsScreen()
+                                }
+                                4 -> { // Lore
+                                    LoreScreen()
+                                }
+                                5 -> { // Encounters
+                                    EncountersScreen()
                                 }
                             }
                         }
                     }
                 }
-            }
+            )
         }
     }
 }

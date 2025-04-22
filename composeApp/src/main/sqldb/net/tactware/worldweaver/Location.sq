@@ -1,0 +1,99 @@
+
+-- Queries
+getAllLocations:
+SELECT * FROM Location ORDER BY updatedAt DESC;
+
+getLocationById:
+SELECT * FROM Location WHERE id = ?;
+
+-- FTS-based search
+searchLocations:
+SELECT Location.*
+FROM LocationFts
+JOIN Location ON Location.id = LocationFts.rowid
+WHERE LocationFts MATCH ?
+ORDER BY updatedAt DESC;
+
+-- Legacy LIKE-based search (fallback)
+searchLocationsLike:
+WITH search_query AS (
+    SELECT '%' || ? || '%' AS query
+)
+SELECT Location.*
+FROM LocationFts
+JOIN Location ON Location.id = LocationFts.rowid
+WHERE LocationFts.name LIKE (SELECT query FROM search_query)
+   OR LocationFts.description LIKE (SELECT query FROM search_query)
+   OR LocationFts.language LIKE (SELECT query FROM search_query)
+   OR LocationFts.dialect LIKE (SELECT query FROM search_query)
+   OR LocationFts.climate LIKE (SELECT query FROM search_query)
+   OR LocationFts.terrain LIKE (SELECT query FROM search_query)
+   OR LocationFts.notes LIKE (SELECT query FROM search_query);
+
+-- Get locations by campaign ID
+getLocationsByCampaignId:
+SELECT * FROM Location WHERE campaignId = ? ORDER BY updatedAt DESC;
+
+-- Get locations by language
+getLocationsByLanguage:
+SELECT * FROM Location WHERE language = ? ORDER BY updatedAt DESC;
+
+-- Get locations by dialect
+getLocationsByDialect:
+SELECT * FROM Location WHERE dialect = ? ORDER BY updatedAt DESC;
+
+-- Get locations by climate
+getLocationsByClimate:
+SELECT * FROM Location WHERE climate = ? ORDER BY updatedAt DESC;
+
+-- Get locations by terrain
+getLocationsByTerrain:
+SELECT * FROM Location WHERE terrain = ? ORDER BY updatedAt DESC;
+
+-- Get locations by party members presence
+getLocationsByPartyMembers:
+SELECT * FROM Location WHERE hasPartyMembers = ? ORDER BY updatedAt DESC;
+
+insertLocation:
+INSERT INTO Location(id, campaignId, name, description, language, dialect, climate, terrain, population, government, economy, religion, landmarks, history, notes, hasPartyMembers, createdAt, updatedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateLocation:
+UPDATE Location
+SET name = ?,
+    description = ?,
+    language = ?,
+    dialect = ?,
+    climate = ?,
+    terrain = ?,
+    population = ?,
+    government = ?,
+    economy = ?,
+    religion = ?,
+    landmarks = ?,
+    history = ?,
+    notes = ?,
+    hasPartyMembers = ?,
+    updatedAt = ?
+WHERE id = ?;
+
+deleteLocation:
+DELETE FROM Location WHERE id = ?;
+
+-- Create triggers for Location FTS table
+CREATE TRIGGER location_ai AFTER INSERT ON Location BEGIN
+    INSERT INTO LocationFts(rowid, name, description, language, dialect, climate, terrain, notes)
+    VALUES (new.id, new.name, new.description, new.language, new.dialect, new.climate, new.terrain, new.notes);
+END;
+
+CREATE TRIGGER location_ad AFTER DELETE ON Location BEGIN
+    INSERT INTO LocationFts(LocationFts, rowid, name, description, language, dialect, climate, terrain, notes)
+    VALUES ('delete', old.id, old.name, old.description, old.language, old.dialect, old.climate, old.terrain, old.notes);
+END;
+
+CREATE TRIGGER location_au AFTER UPDATE ON Location BEGIN
+    INSERT INTO LocationFts(LocationFts, rowid, name, description, language, dialect, climate, terrain, notes)
+    VALUES ('delete', old.id, old.name, old.description, old.language, old.dialect, old.climate, old.terrain, old.notes);
+    INSERT INTO LocationFts(rowid, name, description, language, dialect, climate, terrain, notes)
+    VALUES (new.id, new.name, new.description, new.language, new.dialect, new.climate, new.terrain, new.notes);
+END;
